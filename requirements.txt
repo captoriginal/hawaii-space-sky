@@ -1,7 +1,12 @@
 fastapi
+<<<<<<< HEAD
 uvicorn
 httpx
 pydantic-settings
 python-dotenv
 Pillow
 skyfield
+=======
+uvicorn[standard]
+pydantic
+>>>>>>> 674b96b (Added requirements.txt)
