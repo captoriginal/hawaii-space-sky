@@ -1,5 +1,7 @@
 # Hawai‘i Space & Sky Dashboard
 
+![Dashboard preview](frontend/screenshot/screenshot.jpg)
+
 A full-stack demo that surfaces near-real-time solar, geomagnetic, Maunakea, and observing-index data. The backend is a FastAPI app that fabricates or proxies data, while the frontend is a static dashboard that now renders its top-row panels via pluggable modules.
 
 ---
