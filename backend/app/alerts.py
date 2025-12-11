@@ -7,6 +7,21 @@ def get_current_alerts(status: DashboardStatus) -> List[Alert]:
     alerts: List[Alert] = []
     space = status.space_weather
     observing = status.observing_index
+    sun = status.sun
+
+    # Solar flare alert (M-class or higher)
+    try:
+        if sun.current_class.upper().startswith(("M", "X")):
+            alerts.append(
+                Alert(
+                    id="solar_flare",
+                    severity="warning",
+                    title="Elevated solar flares",
+                    description=f"Latest X-ray classification {sun.current_class}.",
+                )
+            )
+    except Exception:
+        pass
 
     if space.kp >= 5:
         severity = "warning" if space.kp < 7 else "alert"

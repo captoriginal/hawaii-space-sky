@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from random import uniform
 from typing import List, Optional
 
+from .config import get_settings
 from .models import (
     DashboardStatus,
     SpaceWeatherData,
@@ -11,6 +12,7 @@ from .models import (
     SpeedPoint,
     MaunakeaConditions,
     ObservingIndex,
+    MoonInfo,
 )
 
 
@@ -91,8 +93,15 @@ def get_demo_space_weather_data() -> SpaceWeatherData:
 
 def get_demo_maunakea_conditions() -> MaunakeaConditions:
     now = datetime.utcnow()
+    settings = get_settings()
+    # Prefer configured skycam when real data enabled, otherwise local placeholder
+    sky_url = (
+        settings.MAUNAKEA_SKYCAM_URL
+        if settings.USE_REAL_MAUNAKEA
+        else "/static/maunakea/placeholder.svg"
+    )
     return MaunakeaConditions(
-        sky_image_url="https://dummyimage.com/640x360/112244/ffffff&text=Maunakea+Sky",
+        sky_image_url=sky_url,
         cloud_fraction=round(max(0.0, min(1.0, uniform(0.05, 0.4))), 2),
         seeing_arcsec=round(uniform(0.6, 1.3), 2),
         transparency_mag=round(uniform(0.05, 0.25), 2),
@@ -104,16 +113,42 @@ def get_demo_maunakea_conditions() -> MaunakeaConditions:
 
 
 def compute_observing_index(
-    maunakea: MaunakeaConditions, maybe_moon_info: Optional[dict] = None
+    maunakea: MaunakeaConditions,
+    moon_info: Optional[MoonInfo] = None,
+    space_weather: Optional[SpaceWeatherData] = None,
 ) -> ObservingIndex:
+    """Observing Index 2.0 with moon + seeing + transparency + clouds + Kp."""
     score = 10.0
 
     if maunakea.cloud_fraction is not None:
-        score -= maunakea.cloud_fraction * 5  # up to -5 for full clouds
+        score -= maunakea.cloud_fraction * 5  # up to -5
     if maunakea.transparency_mag is not None:
-        score -= min(maunakea.transparency_mag * 10, 2.5)
-    if maunakea.seeing_arcsec is not None and maunakea.seeing_arcsec > 1.5:
-        score -= (maunakea.seeing_arcsec - 1.5) * 2
+        score -= min(maunakea.transparency_mag * 12, 3.5)
+    if maunakea.seeing_arcsec is not None:
+        if maunakea.seeing_arcsec > 1.5:
+            score -= (maunakea.seeing_arcsec - 1.5) * 2
+
+    moon_summary = None
+    best_window = None
+    if moon_info:
+        illum = moon_info.illumination_fraction
+        moon_summary = f"Moon {illum*100:.0f}%"
+        if moon_info.set_time:
+            moon_summary += f", sets at {moon_info.set_time}"
+        if illum > 0.2:
+            score -= min(illum * 4, 2.5)
+        # If moon above horizon most of night, apply small penalty
+        if moon_info.above_horizon_intervals:
+            if any("rise" in it for it in moon_info.above_horizon_intervals):
+                score -= 0.5
+        # Best window heuristic: if set time exists, choose after set
+        if moon_info.set_time:
+            best_window = f"After moonset ({moon_info.set_time})"
+        elif moon_info.rise_time:
+            best_window = f"Before moonrise ({moon_info.rise_time})"
+
+    if space_weather and space_weather.kp is not None and space_weather.kp >= 5:
+        score -= 0.5
 
     score = max(0.0, min(10.0, round(score, 1)))
 
@@ -125,15 +160,6 @@ def compute_observing_index(
         rating = "good"
     else:
         rating = "excellent"
-
-    moon_summary = None
-    best_window = None
-    if maybe_moon_info:
-        moon_summary = maybe_moon_info.get("moon_summary")
-        best_window = maybe_moon_info.get("best_window")
-    else:
-        moon_summary = "Waxing crescent (18%), sets at 22:47 HST"
-        best_window = "21:00–01:30 HST"
 
     notes = [
         f"Clouds: {int(maunakea.cloud_fraction * 100)}% cover"
@@ -150,6 +176,7 @@ def compute_observing_index(
         best_window=best_window,
         moon_summary=moon_summary,
         notes=notes,
+        moon_info=moon_info,
     )
 
 

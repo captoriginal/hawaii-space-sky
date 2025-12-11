@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b162a"/>
+      <stop offset="100%" stop-color="#10223c"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <path d="M0 250 Q120 210 240 240 T640 240 L640 360 L0 360 Z" fill="#20354f"/>
+  <path d="M0 260 Q140 220 260 250 T640 250 L640 360 L0 360 Z" fill="#2b4a6b"/>
+  <circle cx="520" cy="80" r="34" fill="#6be0c2" opacity="0.8"/>
+  <text x="40" y="70" font-family="sans-serif" font-size="28" fill="#dfe9fb">Maunakea sky placeholder</text>
+</svg>
