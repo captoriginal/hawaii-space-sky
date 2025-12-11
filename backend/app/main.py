@@ -1,23 +1,25 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 import asyncio
 import logging
+from pathlib import Path
 
 from .api.routes import router
 from .config import get_settings
+from .plugins import PANELS_CONFIG, load_plugins
 from .services.status import build_status_payload
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+load_plugins(app)
 
 # Allow all origins in dev so file:// or other local setups can hit it
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # in dev, this is fine; we'll tighten later if needed
-    allow_credentials=True,
+    allow_origins=["*", "null"],  # explicitly include file:// (null) origin
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -44,4 +46,14 @@ async def startup_event():
     asyncio.create_task(background_refresh())
 
 
+@app.get("/api/panels")
+def get_panel_config():
+    return PANELS_CONFIG
+
+
 app.include_router(router)
+
+# Serve the frontend bundle directly from FastAPI to avoid file:// origins
+frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+if frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
