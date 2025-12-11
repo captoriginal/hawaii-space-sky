@@ -3,20 +3,707 @@
 <head>
   <meta charset="UTF-8" />
   <title>Hawai‘i Space & Sky Dashboard</title>
+  <style>
+    :root {
+      --bg: #0c111d;
+      --panel: #141c2d;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e6edf7;
+      --muted: #9bb1d8;
+      --sun: #f7a541;
+      --space: #54b6f8;
+      --ground: #6be0c2;
+      --shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 20%, #14213a 0, #0c111d 40%), #0c111d;
+      color: var(--text);
+      margin: 0;
+      padding: 32px 24px 40px;
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.6px;
+    }
+    header .updated {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .nowcast {
+      background: linear-gradient(90deg, rgba(84,182,248,0.1), rgba(107,224,194,0.1));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow);
+      font-size: 15px;
+      color: #dfe9fb;
+    }
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 240px;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #0c111d;
+      font-weight: 700;
+    }
+    .tag.sun { background: var(--sun); }
+    .tag.space { background: var(--space); }
+    .tag.ground { background: var(--ground); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 6px 12px;
+    }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .metric:last-child { border-bottom: none; }
+    .metric span.label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .metric span.value {
+      font-weight: 700;
+      font-size: 17px;
+    }
+    .summary {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #dbe7ff;
+      line-height: 1.5;
+    }
+    .status-line {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: auto;
+    }
+    .sky-image {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin: 4px 0 6px 0;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #0f1b35;
+    }
+    ul.notes {
+      padding-left: 18px;
+      color: #d3def6;
+      margin: 6px 0 0 0;
+    }
+    .unavailable {
+      color: var(--muted);
+      font-style: italic;
+      padding: 6px 0;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .alerts {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .alert-card {
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .alert-card h3 {
+      margin: 0 0 4px 0;
+      font-size: 15px;
+    }
+    .alert-card p {
+      margin: 0;
+      color: #d8e1f5;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .alert-info { background: rgba(107, 224, 194, 0.08); border-color: rgba(107,224,194,0.35); }
+    .alert-warning { background: rgba(247, 165, 65, 0.12); border-color: rgba(247,165,65,0.4); }
+    .alert-alert { background: rgba(220, 38, 38, 0.18); border-color: rgba(220,38,38,0.5); }
+    .history-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .chip.active {
+      border-color: var(--space);
+      color: var(--space);
+      background: rgba(84,182,248,0.12);
+    }
+    .chart {
+      width: 100%;
+      height: 180px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+    }
+    .chart svg {
+      width: 100%;
+      height: 100%;
+    }
+    .nerd-section {
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+    }
+    .nerd-section table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      color: #d7e2fb;
+    }
+    .nerd-section th, .nerd-section td {
+      text-align: left;
+      padding: 4px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .nerd-section tr:last-child td { border-bottom: none; }
+  </style>
 </head>
 <body>
-  <h1>Hawai‘i Space & Sky Dashboard</h1>
-  <p>Backend status will appear below:</p>
-  <pre id="status"></pre>
+  <div class="page">
+    <header>
+      <h1>Hawai‘i Space & Sky Dashboard</h1>
+      <div class="controls">
+        <label class="toggle">
+          <input type="checkbox" id="nerd-toggle" />
+          <span>Nerd mode</span>
+        </label>
+        <span class="updated" id="updated-at">Updated —</span>
+      </div>
+    </header>
+
+    <div class="nowcast" id="nowcast">Now · loading status…</div>
+    <div class="alerts" id="alerts-area"></div>
+
+    <div class="panels">
+      <div class="panel">
+        <h2><span class="tag sun">SUN</span> The Sun</h2>
+        <div class="metrics" id="sun-metrics">
+          <div class="metric">
+            <span class="label">Current X-ray class</span>
+            <span class="value" id="xray-class">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Activity level</span>
+            <span class="value" id="activity-level">—</span>
+          </div>
+        </div>
+        <div class="nerd-section" id="sun-nerd">
+          <table id="sun-table">
+            <thead>
+              <tr><th>Timestamp</th><th>Short</th><th>Long</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="unavailable" id="sun-unavailable" style="display:none;">Sun data unavailable</div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="tag space">SWx</span> Space Weather</h2>
+        <div class="metrics" id="space-metrics">
+          <div class="metric">
+            <span class="label">Kp index</span>
+            <span class="value" id="kp-index">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Latest Bz</span>
+            <span class="value" id="bz-latest">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Solar wind speed</span>
+            <span class="value" id="speed-latest">—</span>
+          </div>
+        </div>
+        <div class="nerd-section" id="space-nerd">
+          <table id="space-table">
+            <thead>
+              <tr><th>Timestamp</th><th>Bz (nT)</th><th>Speed (km/s)</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="unavailable" id="space-unavailable" style="display:none;">Space weather data unavailable</div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="tag ground">MK</span> Maunakea Conditions</h2>
+        <img id="sky-image" class="sky-image" alt="Maunakea sky" />
+        <div class="metrics" id="mk-metrics">
+          <div class="metric">
+            <span class="label">Cloud fraction</span>
+            <span class="value" id="cloud-fraction">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Seeing</span>
+            <span class="value" id="seeing">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Transparency loss</span>
+            <span class="value" id="transparency">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Humidity</span>
+            <span class="value" id="humidity">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Temperature</span>
+            <span class="value" id="temperature">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Wind speed</span>
+            <span class="value" id="wind">—</span>
+          </div>
+        </div>
+        <div class="status-line" id="maunakea-updated"></div>
+        <div class="nerd-section" id="mk-nerd">
+          <table>
+            <tbody>
+              <tr><th>Sky image URL</th><td id="mk-img-url">—</td></tr>
+              <tr><th>Cloud fraction</th><td id="mk-cloud-detail">—</td></tr>
+              <tr><th>Seeing</th><td id="mk-seeing-detail">—</td></tr>
+              <tr><th>Transparency</th><td id="mk-transparency-detail">—</td></tr>
+              <tr><th>Humidity</th><td id="mk-humidity-detail">—</td></tr>
+              <tr><th>Temperature</th><td id="mk-temp-detail">—</td></tr>
+              <tr><th>Wind</th><td id="mk-wind-detail">—</td></tr>
+              <tr><th>Updated</th><td id="mk-updated-detail">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="unavailable" id="mk-unavailable" style="display:none;">Maunakea data unavailable</div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="tag ground">OBS</span> Tonight’s Observing Index</h2>
+        <div class="metrics" id="obs-metrics">
+          <div class="metric">
+            <span class="label">Score (0–10)</span>
+            <span class="value" id="obs-score">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Rating</span>
+            <span class="value" id="obs-rating">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Best window</span>
+            <span class="value" id="obs-window">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">Moon</span>
+            <span class="value" id="obs-moon">—</span>
+          </div>
+        </div>
+        <div class="summary" id="obs-notes">Notes loading…</div>
+        <div class="nerd-section" id="obs-nerd">
+          <div id="obs-raw"></div>
+        </div>
+        <div class="unavailable" id="obs-unavailable" style="display:none;">Observing index unavailable</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Observing Summary</h2>
+      <div class="summary" id="summary-text">Loading demo data…</div>
+      <div class="status-line" id="status-line"></div>
+    </div>
+
+    <div class="panel">
+      <h2>History & Trends</h2>
+      <div class="history-controls">
+        <button class="chip active" data-hours="6">Last 6 hours</button>
+        <button class="chip" data-hours="24">Last 24 hours</button>
+        <button class="chip" data-hours="72">Last 72 hours</button>
+      </div>
+      <div class="summary">Lightweight demo charts, pulled from `/api/history`.</div>
+      <div class="chart"><svg id="chart-xray"></svg></div>
+      <div class="chart"><svg id="chart-space"></svg></div>
+      <div class="chart"><svg id="chart-observing"></svg></div>
+    </div>
+  </div>
 
   <script>
-    async function loadStatus() {
-      const resp = await fetch("http://127.0.0.1:8000/api/status");
-      const data = await resp.json();
-      document.getElementById("status").textContent = JSON.stringify(data, null, 2);
+    let nerdMode = false;
+    let historyHours = 6;
+    let lastStatus = null;
+
+    function apiBase() {
+      const isFile = window.location.protocol === "file:";
+      return isFile ? "http://127.0.0.1:8000" : "";
     }
+
+    async function loadStatus() {
+      try {
+        const resp = await fetch(`${apiBase()}/api/status`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderStatus(data);
+      } catch (err) {
+        console.error(err);
+        document.getElementById("summary-text").textContent =
+          "Unable to load status right now. Check that the FastAPI server is running.";
+        document.getElementById("nowcast").textContent = "Now · status unavailable (API error)";
+        document.getElementById("updated-at").textContent = "Updated —";
+      }
+    }
+
+    async function loadHistory(hours) {
+      try {
+        const resp = await fetch(`${apiBase()}/api/history?hours=${hours}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderHistory(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function formatLatest(series, field) {
+      if (!series || series.length === 0) return "—";
+      return series[series.length - 1][field];
+    }
+
+    function formatValue(value, suffix = "", fallback = "—") {
+      if (value === null || value === undefined) return fallback;
+      return `${value}${suffix}`;
+    }
+
+    function buildNowcast(sun, space, observing) {
+      const parts = [];
+      if (sun) {
+        const level = sun.activity_level;
+        let phrasing = "solar activity";
+        if (level === "quiet") phrasing += " quiet";
+        else if (level === "active") phrasing += " active (C-class flares possible)";
+        else if (level === "stormy") phrasing += " high (M/X-class flares)";
+        else phrasing += ` ${level}`;
+        parts.push(phrasing);
+      }
+
+      if (space && space.kp !== undefined && space.kp !== null) {
+        let geo = "";
+        if (space.kp <= 3) geo = "geomagnetic conditions quiet";
+        else if (space.kp <= 5) geo = "geomagnetic unsettled / minor storm levels";
+        else geo = "geomagnetic storm conditions";
+        geo += ` (Kp ${space.kp})`;
+        parts.push(geo);
+      }
+
+      if (observing) {
+        parts.push(`Maunakea observing ${observing.rating} (Index ${observing.score}/10)`);
+      }
+
+      if (parts.length === 0) return "Now · status unavailable";
+      return `Now · ${parts.join(". ")}.`;
+    }
+
+    function renderAlerts(alerts) {
+      const area = document.getElementById("alerts-area");
+      area.innerHTML = "";
+      if (!alerts || alerts.length === 0) {
+        const div = document.createElement("div");
+        div.className = "alert-card alert-info";
+        div.innerHTML = "<h3>No active alerts</h3><p>All systems nominal.</p>";
+        area.appendChild(div);
+        return;
+      }
+      alerts.forEach((alert) => {
+        const card = document.createElement("div");
+        card.className = `alert-card alert-${alert.severity || "info"}`;
+        card.innerHTML = `<h3>${alert.title}</h3><p>${alert.description}</p>`;
+        area.appendChild(card);
+      });
+    }
+
+    function renderNerdSections({ sun, space, maunakea, observing }) {
+      const nerdDisplay = nerdMode ? "block" : "none";
+      document.querySelectorAll(".nerd-section").forEach((el) => (el.style.display = nerdDisplay));
+
+      if (sun && sun.xray_flux_short && sun.xray_flux_long) {
+        const tbody = document.querySelector("#sun-table tbody");
+        tbody.innerHTML = "";
+        const shorts = sun.xray_flux_short.slice(-5);
+        const longs = sun.xray_flux_long.slice(-5);
+        shorts.forEach((point, idx) => {
+          const longVal = longs[idx] || longs[longs.length - 1];
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${point.timestamp}</td><td>${point.value_wm2.toExponential(2)}</td><td>${longVal.value_wm2.toExponential(2)}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
+      if (space && space.bz_series && space.speed_series) {
+        const tbody = document.querySelector("#space-table tbody");
+        tbody.innerHTML = "";
+        space.bz_series.slice(-5).forEach((bzPoint, idx) => {
+          const speedPoint = space.speed_series[idx] || space.speed_series[space.speed_series.length - 1];
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${bzPoint.timestamp}</td><td>${bzPoint.value_nT}</td><td>${speedPoint.value_km_s}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
+      if (maunakea) {
+        document.getElementById("mk-img-url").textContent = maunakea.sky_image_url || "—";
+        document.getElementById("mk-cloud-detail").textContent = maunakea.cloud_fraction != null ? maunakea.cloud_fraction : "—";
+        document.getElementById("mk-seeing-detail").textContent = maunakea.seeing_arcsec || "—";
+        document.getElementById("mk-transparency-detail").textContent = maunakea.transparency_mag || "—";
+        document.getElementById("mk-humidity-detail").textContent = maunakea.humidity || "—";
+        document.getElementById("mk-temp-detail").textContent = maunakea.temperature_c || "—";
+        document.getElementById("mk-wind-detail").textContent = maunakea.wind_speed_mps || "—";
+        document.getElementById("mk-updated-detail").textContent = maunakea.updated_at || "—";
+      }
+
+      if (observing) {
+        document.getElementById("obs-raw").textContent =
+          `Score ${observing.score}/10 (${observing.rating}); notes: ${(observing.notes || []).join(", ")}`;
+      }
+    }
+
+    function renderStatus(status) {
+      const sun = status.sun || null;
+      const space = status.space_weather || null;
+      const maunakea = status.maunakea || null;
+      const observing = status.observing_index || null;
+      lastStatus = status;
+
+      if (sun) {
+        document.getElementById("xray-class").textContent = sun.current_class;
+        document.getElementById("activity-level").textContent = sun.activity_level;
+      } else {
+        document.getElementById("xray-class").textContent = "—";
+        document.getElementById("activity-level").textContent = "—";
+      }
+
+      if (space) {
+        document.getElementById("kp-index").textContent = space.kp;
+      } else {
+        document.getElementById("kp-index").textContent = "—";
+      }
+
+      const bzLatest = space ? formatLatest(space.bz_series, "value_nT") : "—";
+      const speedLatest = space ? formatLatest(space.speed_series, "value_km_s") : "—";
+      document.getElementById("bz-latest").textContent = space ? `${bzLatest} nT` : "—";
+      document.getElementById("speed-latest").textContent = space ? `${speedLatest} km/s` : "—";
+
+      document.getElementById("sun-metrics").style.display = sun ? "" : "none";
+      document.getElementById("sun-unavailable").style.display = sun ? "none" : "";
+      document.getElementById("space-metrics").style.display = space ? "" : "none";
+      document.getElementById("space-unavailable").style.display = space ? "none" : "";
+      document.getElementById("mk-metrics").style.display = maunakea ? "" : "none";
+      document.getElementById("mk-unavailable").style.display = maunakea ? "none" : "";
+      document.getElementById("obs-metrics").style.display = observing ? "" : "none";
+      document.getElementById("obs-unavailable").style.display = observing ? "none" : "";
+
+      const skyImg = document.getElementById("sky-image");
+      if (maunakea) {
+        if (maunakea.sky_image_url) {
+          skyImg.src = maunakea.sky_image_url;
+        } else {
+          skyImg.removeAttribute("src");
+        }
+        document.getElementById("cloud-fraction").textContent = maunakea.cloud_fraction != null
+          ? `${Math.round(maunakea.cloud_fraction * 100)}%`
+          : "—";
+        document.getElementById("seeing").textContent = formatValue(maunakea.seeing_arcsec, '"');
+        document.getElementById("transparency").textContent = formatValue(maunakea.transparency_mag, " mag");
+        document.getElementById("humidity").textContent = formatValue(maunakea.humidity, "%");
+        document.getElementById("temperature").textContent = formatValue(maunakea.temperature_c, " °C");
+        document.getElementById("wind").textContent = formatValue(maunakea.wind_speed_mps, " m/s");
+        document.getElementById("maunakea-updated").textContent = `Updated ${maunakea.updated_at}`;
+      } else {
+        skyImg.removeAttribute("src");
+        document.getElementById("cloud-fraction").textContent = "—";
+        document.getElementById("seeing").textContent = "—";
+        document.getElementById("transparency").textContent = "—";
+        document.getElementById("humidity").textContent = "—";
+        document.getElementById("temperature").textContent = "—";
+        document.getElementById("wind").textContent = "—";
+        document.getElementById("maunakea-updated").textContent = "";
+      }
+
+      if (observing) {
+        document.getElementById("obs-score").textContent = observing.score;
+        document.getElementById("obs-rating").textContent = observing.rating;
+        document.getElementById("obs-window").textContent = observing.best_window || "—";
+        document.getElementById("obs-moon").textContent = observing.moon_summary || "—";
+        document.getElementById("obs-notes").innerHTML = `<ul class="notes">${(observing.notes || [])
+          .map((n) => `<li>${n}</li>`)
+          .join("")}</ul>`;
+      } else {
+        document.getElementById("obs-score").textContent = "—";
+        document.getElementById("obs-rating").textContent = "—";
+        document.getElementById("obs-window").textContent = "—";
+        document.getElementById("obs-moon").textContent = "—";
+        document.getElementById("obs-notes").textContent = "Notes unavailable";
+      }
+
+      const summary = [
+        sun ? `X-ray flux currently ${sun.current_class} (${sun.activity_level}).` : "Sun data unavailable.",
+        space ? `Geomagnetic Kp is ${space.kp}.` : "Space weather unavailable.",
+        space ? `Bz at ${bzLatest} nT; solar wind ${speedLatest} km/s.` : "",
+        maunakea
+          ? `Maunakea clouds ~${maunakea.cloud_fraction != null ? Math.round(maunakea.cloud_fraction * 100) + "%" : "—"}, seeing ${formatValue(maunakea.seeing_arcsec, '"')}, transparency loss ${formatValue(maunakea.transparency_mag, " mag")}.`
+          : "Maunakea data unavailable.",
+        observing ? `Observing index: ${observing.score}/10 (${observing.rating}).` : "Observing index unavailable.",
+      ].join(" ");
+      document.getElementById("summary-text").textContent = summary;
+      document.getElementById("status-line").textContent = `Updated ${status.timestamp}`;
+      document.getElementById("updated-at").textContent = `Updated ${status.timestamp}`;
+      document.getElementById("nowcast").textContent = buildNowcast(sun, space, observing);
+      renderAlerts(status.alerts || []);
+      renderNerdSections({ sun, space, maunakea, observing });
+    }
+
+    function renderHistory(history) {
+      renderLineChart("chart-xray", history.sun, "xray_flux_short", { color: "#f7a541", label: "X-ray short" });
+      renderLineChart("chart-space", history.space_weather, "bz", { color: "#54b6f8", label: "Bz (nT)" }, [
+        { key: "speed_km_s", color: "#6be0c2" },
+      ]);
+      renderLineChart("chart-observing", history.observing_index, "index_score", { color: "#6be0c2", label: "Observing index" });
+    }
+
+    function renderLineChart(svgId, points, key, primary, extraSeries = []) {
+      const svg = document.getElementById(svgId);
+      const width = svg.clientWidth || 300;
+      const height = svg.clientHeight || 180;
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.innerHTML = "";
+      if (!points || points.length === 0) {
+        svg.innerHTML = `<text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#9bb1d8">No data</text>`;
+        return;
+      }
+
+      const series = [primary, ...extraSeries];
+      const allValues = series.flatMap((seriesMeta, idx) =>
+        points.map((p) => Number(p[idx === 0 ? key : seriesMeta.key])).filter((v) => !Number.isNaN(v))
+      );
+      const min = Math.min(...allValues);
+      const max = Math.max(...allValues);
+      const range = max - min || 1;
+
+      series.forEach((seriesMeta, idx) => {
+        const valueKey = idx === 0 ? key : seriesMeta.key;
+        const color = seriesMeta.color || primary.color;
+        const coords = points.map((p, i) => {
+          const v = Number(p[valueKey]);
+          const x = (i / Math.max(points.length - 1, 1)) * (width - 20) + 10;
+          const y = height - ((v - min) / range) * (height - 20) - 10;
+          return `${x},${y}`;
+        });
+        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+        poly.setAttribute("points", coords.join(" "));
+        poly.setAttribute("fill", "none");
+        poly.setAttribute("stroke", color);
+        poly.setAttribute("stroke-width", "2");
+        poly.setAttribute("opacity", idx === 0 ? "1" : "0.7");
+        svg.appendChild(poly);
+      });
+    }
+
+    function setupHistoryControls() {
+      document.querySelectorAll(".chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          historyHours = Number(chip.dataset.hours);
+          loadHistory(historyHours);
+        });
+      });
+    }
+
+    function setupNerdToggle() {
+      const checkbox = document.getElementById("nerd-toggle");
+      checkbox.addEventListener("change", () => {
+        nerdMode = checkbox.checked;
+        if (lastStatus) {
+          renderNerdSections({
+            sun: lastStatus.sun,
+            space: lastStatus.space_weather,
+            maunakea: lastStatus.maunakea,
+            observing: lastStatus.observing_index,
+          });
+        }
+      });
+    }
+
     loadStatus();
-    setInterval(loadStatus, 60000);
+    loadHistory(historyHours);
+    setupHistoryControls();
+    setupNerdToggle();
+    setInterval(loadStatus, 90000);
   </script>
 </body>
 </html>

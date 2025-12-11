@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.routes import router
+
 app = FastAPI()
 
 # Allow all origins in dev so file:// or other local setups can hit it
@@ -12,8 +14,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/status")
-def get_status():
-    return {
-        "message": "Phase 1 backend is alive, demo JSON coming soon!"
-    }
+app.include_router(router)

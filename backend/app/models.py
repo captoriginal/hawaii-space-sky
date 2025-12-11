@@ -1,0 +1,91 @@
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+
+class XrayFluxPoint(BaseModel):
+    timestamp: str
+    value_wm2: float
+
+
+class SunData(BaseModel):
+    xray_flux_short: List[XrayFluxPoint]
+    xray_flux_long: List[XrayFluxPoint]
+    current_class: str
+    activity_level: str
+    updated_at: str
+
+
+class BzPoint(BaseModel):
+    timestamp: str
+    value_nT: float
+
+
+class SpeedPoint(BaseModel):
+    timestamp: str
+    value_km_s: float
+
+
+class SpaceWeatherData(BaseModel):
+    bz_series: List[BzPoint]
+    speed_series: List[SpeedPoint]
+    kp: float
+    updated_at: str
+
+
+class MaunakeaConditions(BaseModel):
+    sky_image_url: Optional[str]
+    cloud_fraction: Optional[float]  # 0-1
+    seeing_arcsec: Optional[float]
+    transparency_mag: Optional[float]
+    humidity: Optional[float]
+    temperature_c: Optional[float]
+    wind_speed_mps: Optional[float]
+    updated_at: str
+
+
+class ObservingIndex(BaseModel):
+    score: float  # 0-10
+    rating: str  # "poor", "fair", "good", "excellent"
+    best_window: Optional[str]
+    moon_summary: Optional[str]
+    notes: List[str]
+
+
+class Alert(BaseModel):
+    id: str
+    severity: str  # info, warning, alert
+    title: str
+    description: str
+
+
+class HistorySunPoint(BaseModel):
+    timestamp: str
+    xray_flux_short: Optional[float]
+    xray_flux_long: Optional[float]
+
+
+class HistorySpaceWeatherPoint(BaseModel):
+    timestamp: str
+    bz: Optional[float]
+    speed_km_s: Optional[float]
+    kp: Optional[float]
+
+
+class HistoryObservingPoint(BaseModel):
+    timestamp: str
+    index_score: Optional[float]
+
+
+class HistoryResponse(BaseModel):
+    sun: List[HistorySunPoint]
+    space_weather: List[HistorySpaceWeatherPoint]
+    observing_index: List[HistoryObservingPoint]
+
+
+class DashboardStatus(BaseModel):
+    sun: SunData
+    space_weather: SpaceWeatherData
+    maunakea: MaunakeaConditions
+    observing_index: ObservingIndex
+    alerts: List[Alert] = Field(default_factory=list)
+    timestamp: str
