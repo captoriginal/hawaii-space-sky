@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hawai‘i Space & Sky Dashboard</title>
+</head>
+<body>
+  <h1>Hawai‘i Space & Sky Dashboard</h1>
+  <p>Backend status will appear below:</p>
+  <pre id="status"></pre>
+
+  <script>
+    async function loadStatus() {
+      const resp = await fetch("http://127.0.0.1:8000/api/status");
+      const data = await resp.json();
+      document.getElementById("status").textContent = JSON.stringify(data, null, 2);
+    }
+    loadStatus();
+    setInterval(loadStatus, 60000);
+  </script>
+</body>
+</html>
