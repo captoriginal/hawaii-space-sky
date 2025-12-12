@@ -1,21 +1,11 @@
-const SUN_IMAGES_BASE = "https://sdo.gsfc.nasa.gov/assets/img/latest/";
+const SUN_IMAGES_BASE = "https://services.swpc.noaa.gov/images/animations/suvi/primary/";
 const SUN_IMAGE_LIST = [
-  { id: "aia-0193", path: "latest_512_0193.jpg", label: "AIA 0193" },
-  { id: "aia-0171", path: "latest_512_0171.jpg", label: "AIA 0171" },
-  { id: "aia-0304", path: "latest_512_0304.jpg", label: "AIA 0304" },
-  { id: "aia-0211", path: "latest_512_0211.jpg", label: "AIA 0211" },
-  { id: "aia-0131", path: "latest_512_0131.jpg", label: "AIA 0131" },
-  { id: "aia-0335", path: "latest_512_0335.jpg", label: "AIA 0335" },
-  { id: "aia-094", path: "latest_512_0094.jpg", label: "AIA 094" },
-  { id: "aia-1600", path: "latest_512_1600.jpg", label: "AIA 1600" },
-  { id: "aia-1700", path: "latest_512_1700.jpg", label: "AIA 1700" },
-  { id: "aia-211193171", path: "latest_1024_211193171.jpg", label: "AIA 211, 193, 171" },
-  { id: "aia-304211171", path: "f_304_211_171_512.jpg", label: "AIA 304, 211, 171" },
-  { id: "aia-094335193", path: "f_094_335_193_512.jpg", label: "AIA 094, 335, 193" },
-  { id: "aia-171-hmib", path: "f_HMImag_171_512.jpg", label: "AIA 171 & HMIB" },
-  { id: "hmi-mag", path: "latest_512_HMIB.jpg", label: "HMI Magnetogram" },
-  { id: "hmi-intensity", path: "latest_512_HMII.jpg", label: "HMI Intensitygram" },
-  { id: "hmi-doppler", path: "latest_512_HMID.jpg", label: "HMI Dopplergram" },
+  { id: "aia-094", path: "094/latest.png", label: "AIA 094" },
+  { id: "aia-0131", path: "131/latest.png", label: "AIA 0131" },
+  { id: "aia-0171", path: "171/latest.png", label: "AIA 0171" },   
+  { id: "aia-0195", path: "195/latest.png", label: "AIA 0195" },
+  { id: "aia-0284", path: "284/latest.png", label: "AIA 0284" },
+  { id: "aia-0304", path: "304/latest.png", label: "AIA 0304" },
 ];
 
 const STATUS_TTL = 60_000;
@@ -27,7 +17,9 @@ const template = `
     <span data-role="stale" class="stale-dot" style="display:none;" title="Data may be stale — review timestamps."></span>
   </div>
   <div class="carousel">
-    <img data-role="sun-image" class="solar-image" alt="Solar view" title="Latest available solar image." />
+    <div class="sun-image-stack" data-role="sun-image-stack">
+      <img data-role="sun-image" class="solar-image" alt="Solar view" title="Latest available solar image." />
+    </div>
     <div data-role="sun-placeholder" class="placeholder" style="display:none;">Solar image unavailable</div>
   </div>
   <div class="metrics" data-role="sun-metrics">
@@ -67,6 +59,7 @@ class SunPanelPlugin {
     this.statusCache = null;
     this.statusCacheTs = 0;
     this.nerdMode = host?.getNerdMode?.() ?? false;
+    this.imageLoadedOnce = false;
   }
 
   async init({ container }) {
@@ -75,6 +68,7 @@ class SunPanelPlugin {
     this.dom = {
       source: container.querySelector("[data-role='source']"),
       stale: container.querySelector("[data-role='stale']"),
+      imageStack: container.querySelector("[data-role='sun-image-stack']"),
       image: container.querySelector("[data-role='sun-image']"),
       placeholder: container.querySelector("[data-role='sun-placeholder']"),
       metrics: container.querySelector("[data-role='sun-metrics']"),
@@ -121,25 +115,42 @@ class SunPanelPlugin {
   }
 
   showCurrentImage() {
-    if (!this.dom.image) return;
+    if (!this.dom.imageStack) return;
     const item = SUN_IMAGE_LIST[this.carouselIndex % SUN_IMAGE_LIST.length];
     const url = `${SUN_IMAGES_BASE}${item.path}?t=${Date.now()}`;
-    let failed = false;
-    this.dom.placeholder.style.display = "none";
-    this.dom.image.style.display = "block";
-    this.dom.image.src = url;
-    this.dom.image.alt = item.label;
-    this.dom.image.onerror = () => {
-      failed = true;
-      this.dom.image.style.display = "none";
-      this.dom.placeholder.style.display = "grid";
-    };
-    this.dom.image.onload = () => {
-      if (!failed) {
-        this.dom.image.style.display = "block";
-        this.dom.placeholder.style.display = "none";
+    const wrapper = this.dom.imageStack;
+    const current = this.dom.image;
+    const nextImg = document.createElement("img");
+    nextImg.className = current?.className || "solar-image";
+    nextImg.alt = item.label;
+    nextImg.style.opacity = this.imageLoadedOnce ? "0" : "1";
+    nextImg.style.position = "absolute";
+    nextImg.style.inset = "0";
+    const cleanupFailure = () => {
+      nextImg.remove();
+      if (!wrapper.querySelector("img")) {
+        this.dom.placeholder.style.display = "grid";
       }
     };
+    nextImg.onerror = () => {
+      cleanupFailure();
+    };
+    nextImg.onload = () => {
+      this.imageLoadedOnce = true;
+      this.dom.placeholder.style.display = "none";
+      requestAnimationFrame(() => {
+        nextImg.style.opacity = "1";
+        if (current) {
+          current.style.opacity = "0";
+        }
+      });
+      setTimeout(() => {
+        if (current && current !== nextImg) current.remove();
+        this.dom.image = nextImg;
+      }, 1500);
+    };
+    wrapper.appendChild(nextImg);
+    nextImg.src = url;
   }
 
   async refreshStatus(force = false) {

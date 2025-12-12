@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Query
 
+from fastapi import APIRouter, Query
+
+from ..cache import clear_cache
 from ..models import DashboardStatus, HistoryResponse
 from ..services.status import build_status_payload
 from ..storage import fetch_history
@@ -18,3 +21,9 @@ def get_history(hours: int = Query(24, ge=1, le=168)):
     Return recent history points for sun, space weather, and observing index.
     """
     return fetch_history(hours)
+
+
+@router.post("/cache/clear")
+def clear_cache_endpoint():
+    clear_cache()
+    return {"status": "ok"}

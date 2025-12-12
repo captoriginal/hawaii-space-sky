@@ -66,3 +66,9 @@ def is_cache_fresh(domain: str, max_age_seconds: int) -> bool:
     except Exception:
         return False
     return datetime.utcnow() - ts < timedelta(seconds=max_age_seconds)
+
+
+def clear_cache():
+    conn = _get_conn()
+    conn.execute("DELETE FROM cache")
+    conn.commit()

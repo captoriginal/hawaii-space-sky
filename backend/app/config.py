@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     LOCATION_ELEV: float = 4205.0
 
     # Modes
-    DATA_MODE: str = "demo"  # demo | hybrid | real
+    DATA_MODE: str = "real"  # demo | hybrid | real
     USE_REAL_SUN: bool = False
     USE_REAL_SPACE_WEATHER: bool = False
     USE_REAL_SOLAR_IMAGES: bool = False
