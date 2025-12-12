@@ -46,13 +46,22 @@
       font-size: 14px;
       color: var(--muted);
     }
-    .now-alert-row {
+    .panel.now-alert-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 12px;
       width: 100%;
+      align-items: start;
+      min-height: auto;
     }
-    .nowcast {
+    .panel.now-alert-row .nowcast,
+    .panel.now-alert-row .alerts {
+      height: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel.now-alert-row .nowcast {
       background: linear-gradient(90deg, rgba(84,182,248,0.1), rgba(107,224,194,0.1));
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -60,7 +69,6 @@
       box-shadow: var(--shadow);
       font-size: 15px;
       color: #dfe9fb;
-      height: 100%;
       box-sizing: border-box;
     }
     .panels {
@@ -111,6 +119,16 @@
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 6px 12px;
     }
+    .observing-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .observing-layout .info-block {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
     .metric {
       display: flex;
       justify-content: space-between;
@@ -133,6 +151,12 @@
       padding: 12px 14px;
       color: #dbe7ff;
       line-height: 1.5;
+    }
+    .observing-layout .info-block .summary {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .status-line {
       font-size: 13px;
@@ -175,30 +199,34 @@
       cursor: pointer;
       user-select: none;
     }
-    .alerts {
+    .panel.now-alert-row .alerts {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      padding: 0;
+      background: none;
+      border: none;
+      box-shadow: none;
     }
-    .alert-card {
+    .panel.now-alert-row .alert-card {
       border-radius: 10px;
       padding: 12px 14px;
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
     }
-    .alert-card h3 {
+    .panel.now-alert-row .alert-card h3 {
       margin: 0 0 4px 0;
       font-size: 15px;
     }
-    .alert-card p {
+    .panel.now-alert-row .alert-card p {
       margin: 0;
       color: #d8e1f5;
       font-size: 14px;
       line-height: 1.4;
     }
-    .alert-info { background: rgba(107, 224, 194, 0.08); border-color: rgba(107,224,194,0.35); }
-    .alert-warning { background: rgba(247, 165, 65, 0.12); border-color: rgba(247,165,65,0.4); }
-    .alert-alert { background: rgba(220, 38, 38, 0.18); border-color: rgba(220,38,38,0.5); }
+    .panel.now-alert-row .alert-info { background: rgba(107, 224, 194, 0.08); border-color: rgba(107,224,194,0.35); }
+    .panel.now-alert-row .alert-warning { background: rgba(247, 165, 65, 0.12); border-color: rgba(247,165,65,0.4); }
+    .panel.now-alert-row .alert-alert { background: rgba(220, 38, 38, 0.18); border-color: rgba(220,38,38,0.5); }
     .history-controls {
       display: flex;
       gap: 8px;
@@ -349,10 +377,7 @@
       </div>
     </header>
 
-    <div class="now-alert-row">
-      <div class="nowcast" id="nowcast">Now · loading status…</div>
-      <div class="alerts" id="alerts-area"></div>
-    </div>
+    <div class="panel" data-panel-slot="panel-now"></div>
 
     <div class="panels" id="panel-grid">
       <div class="panel" data-panel-slot="panel-1"></div>
@@ -361,62 +386,9 @@
     </div>
 
     <div class="panels two-col">
-
-      <div class="panel">
-        <h2><span class="tag ground">OBS</span> Tonight’s Observing Index</h2>
-        <div class="source" title="Derived from Maunakea conditions, moonlight, and other factors.">Source: <span id="source-obs" class="badge">—</span></div>
-        <div class="metrics" id="obs-metrics">
-          <div class="metric">
-            <span class="label" title="Overall observing quality, combining atmospheric conditions,&#10;moonlight, and transparency.">Score (0–10)</span>
-            <span class="value" id="obs-score">—</span>
-          </div>
-          <div class="metric">
-            <span class="label" title="Human-friendly interpretation of the observing index score.">Rating</span>
-            <span class="value" id="obs-rating">—</span>
-          </div>
-          <div class="metric">
-            <span class="label" title="Estimated time period with optimal observing conditions.">Best window</span>
-            <span class="value" id="obs-window">—</span>
-          </div>
-          <div class="metric">
-            <span class="label" title="Current phase and altitude of the Moon.">Moon</span>
-            <span class="value" id="obs-moon">—</span>
-          </div>
-          <div class="metric">
-            <span class="label" title="Percentage of the Moon’s visible surface illuminated.">Moon illum.</span>
-            <span class="value" id="obs-moon-illum">—</span>
-          </div>
-          <div class="metric">
-            <span class="label" title="Local times when the Moon rises and sets.">Moonrise/set</span>
-            <span class="value" id="obs-moon-times">—</span>
-          </div>
-        </div>
-        <div class="summary" id="obs-notes" title="Components influencing the observing index.">Notes loading…</div>
-        <div class="nerd-section" id="obs-nerd">
-          <div id="obs-raw"></div>
-        </div>
-        <div class="unavailable" id="obs-unavailable" style="display:none;">Observing index unavailable</div>
-      </div>
+      <div class="panel" data-panel-slot="panel-observing"></div>
     </div>
 
-    <div class="panel full-width">
-      <h2>Observing Summary</h2>
-      <div class="summary" id="summary-text" title="Human-readable summary of space and sky conditions derived from dashboard data.">Loading demo data…</div>
-      <div class="status-line" id="status-line"></div>
-    </div>
-
-    <div class="panel full-width">
-      <h2>History & Trends</h2>
-      <div class="history-controls">
-        <button class="chip active" data-hours="6">Last 6 hours</button>
-        <button class="chip" data-hours="24">Last 24 hours</button>
-        <button class="chip" data-hours="72">Last 72 hours</button>
-      </div>
-      <div class="summary">Lightweight demo charts, pulled from `/api/history`.</div>
-      <div class="chart"><svg id="chart-xray"></svg></div>
-      <div class="chart"><svg id="chart-space"></svg></div>
-      <div class="chart"><svg id="chart-observing"></svg></div>
-    </div>
   </div>
   <script type="module" src="./app.js"></script>
 </body>

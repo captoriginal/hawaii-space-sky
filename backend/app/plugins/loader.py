@@ -23,6 +23,18 @@ def _load_panel_config() -> Dict[str, Any]:
 PANELS_CONFIG: Dict[str, Any] = _load_panel_config()
 
 
+def get_panel_config() -> Dict[str, Any]:
+    """
+    Return the current panel configuration. Re-read the JSON file so runtime
+    tweaks (e.g., panel-now) show up without restarting the backend.
+    """
+    try:
+        return _load_panel_config()
+    except Exception:
+        logger.exception("Failed to reload panel configuration; falling back to cached copy")
+        return PANELS_CONFIG
+
+
 def _unique_plugin_names(config: Dict[str, Any]) -> Set[str]:
     panels = config.get("panels", {})
     return {plugin_name for plugin_name in panels.values() if plugin_name}

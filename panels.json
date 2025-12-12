@@ -2,6 +2,8 @@
   "panels": {
     "panel-1": "sun",
     "panel-2": "maunakea",
-    "panel-3": "earth"
+    "panel-3": "earth",
+    "panel-observing": "observing",
+    "panel-now": "now"
   }
 }

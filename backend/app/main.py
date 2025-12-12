@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .api.routes import router
 from .config import get_settings
-from .plugins import PANELS_CONFIG, load_plugins
+from .plugins import PANELS_CONFIG, get_panel_config, load_plugins
 from .services.status import build_status_payload
 
 logger = logging.getLogger(__name__)
@@ -47,8 +47,8 @@ async def startup_event():
 
 
 @app.get("/api/panels")
-def get_panel_config():
-    return PANELS_CONFIG
+def read_panel_config():
+    return get_panel_config()
 
 
 app.include_router(router)
