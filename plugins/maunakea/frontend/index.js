@@ -1,5 +1,3 @@
-const STATUS_TTL = 60_000;
-
 const template = `
   <h2><span class="tag ground">MK</span> Maunakea Conditions</h2>
   <div class="source" title="Where this Maunakea data came from.">
@@ -17,20 +15,6 @@ const template = `
     <div class="metric"><span class="label">Wind speed</span><span class="value" data-role="wind">—</span></div>
   </div>
   <div class="status-line" data-role="updated" title="Timestamp of latest measurements."></div>
-  <div class="nerd-section" data-role="nerd">
-    <table>
-      <tbody>
-        <tr><th>Sky image URL</th><td data-role="img-url">—</td></tr>
-        <tr><th>Cloud fraction</th><td data-role="cloud-detail">—</td></tr>
-        <tr><th>Seeing</th><td data-role="seeing-detail">—</td></tr>
-        <tr><th>Transparency</th><td data-role="transparency-detail">—</td></tr>
-        <tr><th>Humidity</th><td data-role="humidity-detail">—</td></tr>
-        <tr><th>Temperature</th><td data-role="temp-detail">—</td></tr>
-        <tr><th>Wind</th><td data-role="wind-detail">—</td></tr>
-        <tr><th>Updated</th><td data-role="updated-detail">—</td></tr>
-      </tbody>
-    </table>
-  </div>
   <div class="unavailable" data-role="unavailable" style="display:none;">Maunakea data unavailable</div>
 `;
 
@@ -58,11 +42,18 @@ class MaunakeaPanelPlugin {
     this.statusCache = null;
     this.statusCacheTs = 0;
     this.statusTimer = null;
-    this.nerdMode = host?.getNerdMode?.() ?? false;
+    this.config = {
+      statusTtlMs: 60_000,
+      refreshIntervalMs: 90_000,
+    };
   }
 
-  async init({ container }) {
+  async init({ container, config }) {
     this.container = container;
+    this.config = {
+      statusTtlMs: config?.status_ttl_ms ?? 60_000,
+      refreshIntervalMs: config?.refresh_interval_ms ?? 90_000,
+    };
     container.innerHTML = template;
     this.dom = {
       source: container.querySelector("[data-role='source']"),
@@ -77,23 +68,16 @@ class MaunakeaPanelPlugin {
       temperature: container.querySelector("[data-role='temperature']"),
       wind: container.querySelector("[data-role='wind']"),
       updated: container.querySelector("[data-role='updated']"),
-      nerd: container.querySelector("[data-role='nerd']"),
-      imgUrl: container.querySelector("[data-role='img-url']"),
-      cloudDetail: container.querySelector("[data-role='cloud-detail']"),
-      seeingDetail: container.querySelector("[data-role='seeing-detail']"),
-      transparencyDetail: container.querySelector("[data-role='transparency-detail']"),
-      humidityDetail: container.querySelector("[data-role='humidity-detail']"),
-      tempDetail: container.querySelector("[data-role='temp-detail']"),
-      windDetail: container.querySelector("[data-role='wind-detail']"),
-      updatedDetail: container.querySelector("[data-role='updated-detail']"),
       unavailable: container.querySelector("[data-role='unavailable']"),
     };
-    this.dom.nerd.style.display = this.nerdMode ? "block" : "none";
   }
 
   start() {
     this.refreshStatus(true);
-    this.statusTimer = setInterval(() => this.refreshStatus(false), 90_000);
+    this.statusTimer = setInterval(
+      () => this.refreshStatus(false),
+      this.config.refreshIntervalMs
+    );
   }
 
   stop() {
@@ -105,11 +89,6 @@ class MaunakeaPanelPlugin {
     this.stop();
     if (this.container) this.container.innerHTML = "";
     this.container = null;
-  }
-
-  setNerdMode(enabled) {
-    this.nerdMode = enabled;
-    if (this.dom.nerd) this.dom.nerd.style.display = enabled ? "block" : "none";
   }
 
   async refreshStatus(force = false) {
@@ -131,14 +110,6 @@ class MaunakeaPanelPlugin {
       this.dom.temperature.textContent = formatValue(mk.temperature_c, " °C");
       this.dom.wind.textContent = formatValue(mk.wind_speed_mps, " m/s");
       this.dom.updated.textContent = mk.updated_at ? `Updated ${mk.updated_at}` : "";
-      this.dom.imgUrl.textContent = mk.sky_image_url || "—";
-      this.dom.cloudDetail.textContent = mk.cloud_fraction ?? "—";
-      this.dom.seeingDetail.textContent = mk.seeing_arcsec ?? "—";
-      this.dom.transparencyDetail.textContent = mk.transparency_mag ?? "—";
-      this.dom.humidityDetail.textContent = mk.humidity ?? "—";
-      this.dom.tempDetail.textContent = mk.temperature_c ?? "—";
-      this.dom.windDetail.textContent = mk.wind_speed_mps ?? "—";
-      this.dom.updatedDetail.textContent = mk.updated_at || "—";
       this.updateSource(status);
     } catch (err) {
       console.error("Maunakea plugin error", err);
@@ -148,7 +119,7 @@ class MaunakeaPanelPlugin {
 
   async fetchStatus(force = false) {
     const now = Date.now();
-    if (!force && this.statusCache && now - this.statusCacheTs < STATUS_TTL) {
+    if (!force && this.statusCache && now - this.statusCacheTs < this.config.statusTtlMs) {
       return this.statusCache;
     }
     const resp = await fetch(`${this.host.apiBase()}/api/status`);

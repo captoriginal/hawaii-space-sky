@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 
 from fastapi import APIRouter, Query
 
@@ -6,6 +6,7 @@ from ..cache import clear_cache
 from ..models import DashboardStatus, HistoryResponse
 from ..services.status import build_status_payload
 from ..storage import fetch_history
+from ..plugins import load_plugin_config
 
 router = APIRouter(prefix="/api")
 
@@ -27,3 +28,11 @@ def get_history(hours: int = Query(24, ge=1, le=168)):
 def clear_cache_endpoint():
     clear_cache()
     return {"status": "ok"}
+
+
+@router.get("/plugins/{plugin_name}/config")
+def get_plugin_config(plugin_name: str):
+    config = load_plugin_config(plugin_name)
+    if not config:
+        raise HTTPException(status_code=404, detail="Plugin config not found")
+    return config

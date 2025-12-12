@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PANEL_CONFIG_PATH = REPO_ROOT / "panels.json"
+PLUGINS_ROOT = REPO_ROOT / "plugins"
 
 
 def _load_panel_config() -> Dict[str, Any]:
@@ -46,7 +47,11 @@ def load_plugins(app: FastAPI) -> None:
     register their routes or background tasks with the FastAPI app.
     """
     for plugin_name in sorted(_unique_plugin_names(PANELS_CONFIG)):
-        module_name = f"backend.app.plugins.{plugin_name}"
+        if not (PLUGINS_ROOT / plugin_name).exists():
+            logger.warning("Configured plugin %s not found in %s", plugin_name, PLUGINS_ROOT)
+            continue
+
+        module_name = f"plugins.{plugin_name}.backend"
         try:
             module = import_module(module_name)
         except ImportError as exc:

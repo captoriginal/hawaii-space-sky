@@ -5,6 +5,7 @@ from ..alerts import get_current_alerts
 from ..config import Settings, get_settings
 from ..data import compute_observing_index
 from ..models import DashboardStatus, SolarImage, SunData
+from ..plugins import load_plugin_config
 from ..services.selectors import (
     select_maunakea,
     select_moon,
@@ -16,25 +17,16 @@ from ..storage import record_history
 
 logger = logging.getLogger(__name__)
 
-SDO_IMAGE_CATALOG = [
-    ("AIA 0193", "latest_512_0193.jpg"),
-    ("AIA 0171", "latest_512_0171.jpg"),
-    ("AIA 0304", "latest_512_0304.jpg"),
-    ("AIA 0211", "latest_512_0211.jpg"),
-    ("AIA 0131", "latest_512_0131.jpg"),
-    ("AIA 0335", "latest_512_0335.jpg"),
-    ("AIA 0094", "latest_512_0094.jpg"),
-    ("AIA 1600", "latest_512_1600.jpg"),
-    ("AIA 1700", "latest_512_1700.jpg"),
-    ("AIA 211/193/171", "latest_1024_211193171.jpg"),
-    ("AIA 304/211/171", "f_304_211_171_512.jpg"),
-    ("AIA 094/335/193", "f_094_335_193_512.jpg"),
-    ("AIA 171 & HMIB", "f_HMImag_171_512.jpg"),
-    ("HMI Magnetogram", "latest_512_HMIB.jpg"),
-    ("HMI Intensitygram", "latest_512_HMII.jpg"),
-    ("HMI Dopplergram", "latest_512_HMID.jpg"),
+SUN_CONFIG = load_plugin_config("sun")
+DEFAULT_IMAGE_CATALOG = [
+    {"label": "AIA 0193", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg"},
+    {"label": "AIA 0171", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0171.jpg"},
+    {"label": "AIA 0304", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0304.jpg"},
+    {"label": "AIA 0211", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0211.jpg"},
+    {"label": "AIA 0131", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0131.jpg"},
+    {"label": "AIA 0335", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0335.jpg"},
+    {"label": "AIA 0094", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0094.jpg"}
 ]
-SDO_IMAGE_BASE = "https://sdo.gsfc.nasa.gov/assets/img/latest/"
 
 
 def _augment_sun_images(sun: SunData | None, primary: SolarImage | None) -> None:
@@ -44,8 +36,12 @@ def _augment_sun_images(sun: SunData | None, primary: SolarImage | None) -> None
     if primary and primary.url not in existing_urls:
         sun.images.append(primary)
         existing_urls.add(primary.url)
-    for label, path in SDO_IMAGE_CATALOG:
-        url = f"{SDO_IMAGE_BASE}{path}"
+    catalog = SUN_CONFIG.get("image_catalog", DEFAULT_IMAGE_CATALOG)
+    for entry in catalog:
+        url = entry.get("url")
+        label = entry.get("label", "Solar")
+        if not url:
+            continue
         if url in existing_urls:
             continue
         sun.images.append(

@@ -1,0 +1,5 @@
+{
+  "skycam_url": "https://www.cfht.hawaii.edu/~nanaao/last_vis.png",
+  "status_ttl_ms": 60000,
+  "refresh_interval_ms": 90000
+}

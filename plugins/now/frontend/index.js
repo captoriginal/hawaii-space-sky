@@ -1,4 +1,7 @@
-const STATUS_TTL = 60_000;
+const DEFAULT_CONFIG = {
+  statusTtlMs: 60_000,
+  refreshIntervalMs: 90_000,
+};
 
 const template = `
   <div class="nowcast" data-role="nowcast">Now · loading status…</div>
@@ -17,10 +20,15 @@ class NowPanelPlugin {
     this.statusCache = null;
     this.statusCacheTs = 0;
     this.statusTimer = null;
+    this.config = { ...DEFAULT_CONFIG };
   }
 
-  async init({ container }) {
+  async init({ container, config }) {
     this.container = container;
+    this.config = {
+      statusTtlMs: config?.status_ttl_ms ?? DEFAULT_CONFIG.statusTtlMs,
+      refreshIntervalMs: config?.refresh_interval_ms ?? DEFAULT_CONFIG.refreshIntervalMs,
+    };
     container.classList.add("now-alert-row");
     container.innerHTML = template;
     this.dom = {
@@ -31,7 +39,10 @@ class NowPanelPlugin {
 
   start() {
     this.refreshStatus(true);
-    this.statusTimer = setInterval(() => this.refreshStatus(false), 90_000);
+    this.statusTimer = setInterval(
+      () => this.refreshStatus(false),
+      this.config.refreshIntervalMs
+    );
   }
 
   stop() {
@@ -61,7 +72,7 @@ class NowPanelPlugin {
 
   async fetchStatus(force = false) {
     const now = Date.now();
-    if (!force && this.statusCache && now - this.statusCacheTs < STATUS_TTL) {
+    if (!force && this.statusCache && now - this.statusCacheTs < this.config.statusTtlMs) {
       return this.statusCache;
     }
     const resp = await fetch(`${this.host.apiBase()}/api/status`);

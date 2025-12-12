@@ -3,6 +3,7 @@ from random import uniform
 from typing import List, Optional
 
 from .config import get_settings
+from .plugins import load_plugin_config
 from .models import (
     DashboardStatus,
     SpaceWeatherData,
@@ -94,9 +95,10 @@ def get_demo_space_weather_data() -> SpaceWeatherData:
 def get_demo_maunakea_conditions() -> MaunakeaConditions:
     now = datetime.utcnow()
     settings = get_settings()
+    mk_config = load_plugin_config("maunakea")
     # Prefer configured skycam when real data enabled, otherwise local placeholder
     sky_url = (
-        settings.MAUNAKEA_SKYCAM_URL
+        mk_config.get("skycam_url", settings.MAUNAKEA_SKYCAM_URL)
         if settings.USE_REAL_MAUNAKEA
         else "/static/maunakea/placeholder.svg"
     )

@@ -1,0 +1,8 @@
+{
+  "loop_base_url": "https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/",
+  "filename_regex": "(\\d{4})(\\d{3})(\\d{2})(\\d{2})_GOES18-ABI-FD-GEOCOLOR-1808x1808\\.jpg",
+  "cache_ttl_seconds": 600,
+  "refresh_interval_ms": 600000,
+  "intro_status": "Playing last 50 frames once…",
+  "live_status": "Showing latest GeoColor frame (updates every 10 minutes)."
+}

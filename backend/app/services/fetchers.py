@@ -6,6 +6,7 @@ from datetime import datetime
 import httpx
 
 from ..config import Settings
+from ..plugins import load_plugin_config
 from ..models import SpaceWeatherData, SunData, XrayFluxPoint, BzPoint, SpeedPoint
 
 logger = logging.getLogger(__name__)
@@ -49,10 +50,12 @@ async def fetch_xray_flux(settings: Settings) -> SunData:
     """
     Fetch GOES X-ray flux; raise on failure so callers can handle gracefully.
     """
+    sun_config = load_plugin_config("sun")
+    xray_url = sun_config.get("xray_flux_url", settings.XRAY_FLUX_URL)
     async with httpx.AsyncClient(
         timeout=settings.HTTP_TIMEOUT_SECONDS, follow_redirects=True
     ) as client:
-        resp = await _get_with_retry(client, settings.XRAY_FLUX_URL, settings)
+        resp = await _get_with_retry(client, xray_url, settings)
         payload = resp.json()
 
     # payload is list of dicts with time_tag, flux, energy

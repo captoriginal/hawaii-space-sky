@@ -1,0 +1,4 @@
+{
+  "status_ttl_ms": 60000,
+  "refresh_interval_ms": 90000
+}

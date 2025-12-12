@@ -1,5 +1,4 @@
 const state = {
-  nerdMode: false,
   lastStatus: null,
 };
 
@@ -7,7 +6,6 @@ class PanelManager {
   constructor(rootNode = document) {
     this.rootNode = rootNode;
     this.plugins = new Map();
-    this.nerdMode = false;
   }
 
   async init() {
@@ -17,7 +15,6 @@ class PanelManager {
     for (const [slotId, pluginName] of Object.entries(panels)) {
       await this.mountPlugin(slotId, pluginName);
     }
-    this.setNerdMode(state.nerdMode);
   }
 
   async fetchPanelConfig() {
@@ -38,15 +35,17 @@ class PanelManager {
     const slot = this.getSlot(slotId);
     if (!slot) return;
     try {
-      const module = await import(`./plugins/${pluginName}/index.js`);
+      const config = await this.fetchPluginConfig(pluginName);
+      const moduleUrl = `${assetBase()}/plugins/${pluginName}/frontend/index.js`;
+      const module = await import(moduleUrl);
       const factory = module.default;
       if (typeof factory !== "function") throw new Error("Plugin factory missing");
       const plugin = factory({
         apiBase,
         fetchJson: (path, options) => fetch(`${apiBase()}${path}`, options),
-        getNerdMode: () => this.nerdMode,
+        getConfig: () => config || {},
       });
-      await plugin.init({ container: slot, slotId, host: this });
+      await plugin.init({ container: slot, slotId, host: this, config });
       plugin.start?.();
       this.plugins.set(slotId, plugin);
     } catch (err) {
@@ -56,12 +55,17 @@ class PanelManager {
     }
   }
 
-  setNerdMode(enabled) {
-    this.nerdMode = enabled;
-    for (const plugin of this.plugins.values()) {
-      plugin.setNerdMode?.(enabled);
+  async fetchPluginConfig(pluginName) {
+    try {
+      const resp = await fetch(`${apiBase()}/api/plugins/${pluginName}/config`);
+      if (!resp.ok) throw new Error(`plugin config HTTP ${resp.status}`);
+      return resp.json();
+    } catch (err) {
+      console.warn(`Unable to load config for plugin ${pluginName}`, err);
+      return null;
     }
   }
+
 }
 
 const panelManager = new PanelManager(document);
@@ -75,13 +79,16 @@ async function initApp() {
     console.error("Unable to load panel plugins", err);
   }
   loadStatus();
-  setupNerdToggle();
   setInterval(loadStatus, 90_000);
 }
 
 function apiBase() {
   const isFile = window.location.protocol === "file:";
   return isFile ? "http://127.0.0.1:8000" : "";
+}
+
+function assetBase() {
+  return apiBase();
 }
 
 async function loadStatus() {
@@ -112,12 +119,4 @@ function renderStatus(status) {
   const maunakea = status.maunakea || null;
   const observing = status.observing_index || null;
   state.lastStatus = status;
-}
-
-function setupNerdToggle() {
-  const checkbox = document.getElementById("nerd-toggle");
-  checkbox.addEventListener("change", () => {
-    state.nerdMode = checkbox.checked;
-    panelManager.setNerdMode(state.nerdMode);
-  });
 }

@@ -1,4 +1,7 @@
-const STATUS_TTL = 60_000;
+const DEFAULT_CONFIG = {
+  statusTtlMs: 60_000,
+  refreshIntervalMs: 90_000,
+};
 
 const formatValue = (value, suffix = "", fallback = "—") => {
   if (value === null || value === undefined) return fallback;
@@ -55,9 +58,6 @@ const template = `
       <div class="summary" data-role="notes" title="Components influencing the observing index.">Notes loading…</div>
     </div>
   </div>
-  <div class="nerd-section" data-role="nerd">
-    <div data-role="raw"></div>
-  </div>
   <div class="unavailable" data-role="unavailable" style="display:none;">Observing index unavailable</div>
 `;
 
@@ -73,11 +73,15 @@ class ObservingPanelPlugin {
     this.statusCache = null;
     this.statusCacheTs = 0;
     this.statusTimer = null;
-    this.nerdMode = host?.getNerdMode?.() ?? false;
+    this.config = { ...DEFAULT_CONFIG };
   }
 
-  async init({ container }) {
+  async init({ container, config }) {
     this.container = container;
+    this.config = {
+      statusTtlMs: config?.status_ttl_ms ?? DEFAULT_CONFIG.statusTtlMs,
+      refreshIntervalMs: config?.refresh_interval_ms ?? DEFAULT_CONFIG.refreshIntervalMs,
+    };
     container.innerHTML = template;
     this.dom = {
       source: container.querySelector("[data-role='source']"),
@@ -89,17 +93,17 @@ class ObservingPanelPlugin {
       illum: container.querySelector("[data-role='illum']"),
       moonTimes: container.querySelector("[data-role='moon-times']"),
       notes: container.querySelector("[data-role='notes']"),
-      nerd: container.querySelector("[data-role='nerd']"),
-      raw: container.querySelector("[data-role='raw']"),
       unavailable: container.querySelector("[data-role='unavailable']"),
       summary: container.querySelector("[data-role='summary-text']"),
     };
-    this.dom.nerd.style.display = this.nerdMode ? "block" : "none";
   }
 
   start() {
     this.refreshStatus(true);
-    this.statusTimer = setInterval(() => this.refreshStatus(false), 90_000);
+    this.statusTimer = setInterval(
+      () => this.refreshStatus(false),
+      this.config.refreshIntervalMs
+    );
   }
 
   stop() {
@@ -111,11 +115,6 @@ class ObservingPanelPlugin {
     this.stop();
     if (this.container) this.container.innerHTML = "";
     this.container = null;
-  }
-
-  setNerdMode(enabled) {
-    this.nerdMode = enabled;
-    if (this.dom.nerd) this.dom.nerd.style.display = enabled ? "block" : "none";
   }
 
   async refreshStatus(force = false) {
@@ -136,7 +135,7 @@ class ObservingPanelPlugin {
 
   async fetchStatus(force = false) {
     const now = Date.now();
-    if (!force && this.statusCache && now - this.statusCacheTs < STATUS_TTL) {
+    if (!force && this.statusCache && now - this.statusCacheTs < this.config.statusTtlMs) {
       return this.statusCache;
     }
     const resp = await fetch(`${this.host.apiBase()}/api/status`);
@@ -172,9 +171,6 @@ class ObservingPanelPlugin {
     const moon = observing.moon_info
       ? `Moon illum ${Math.round(observing.moon_info.illumination_fraction * 100)}%`
       : "Moon info unavailable";
-    if (this.dom.raw) {
-      this.dom.raw.textContent = `Score ${observing.score}/10 (${observing.rating}); ${moon}; notes: ${notes.join(", ")}`;
-    }
     if (this.dom.summary) {
       const sun = this.statusCache?.sun;
       const space = this.statusCache?.space_weather;

@@ -1,4 +1,4 @@
-def register(app):
+def register(app, helpers=None):
     """
     Maunakea panel relies on shared /api/status data only. We provide an empty
     register hook so the plugin loader can import the package cleanly and so

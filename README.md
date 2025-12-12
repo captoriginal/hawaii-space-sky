@@ -10,7 +10,7 @@ A full-stack demo that surfaces near-real-time solar, geomagnetic, Maunakea, and
 
 - **Backend**: `backend/app` (FastAPI). Provides API endpoints, background refresh, SQLite persistence for history, and a plugin loader that lets panel-specific backends register their own routes.
 - **Frontend**: `frontend/` (plain HTML/CSS/ES modules). The main page is a static dashboard; the top-row panels (`Sun`, `Maunakea`, `Earth`) are now plugin-driven ES modules that can be swapped via configuration.
-- **Plugins**: Each panel is defined by a directory under `frontend/plugins/<name>` and (optionally) a backend counterpart at `backend/app/plugins/<name>`. A JSON config (`panels.json`) selects which plugin goes into each slot.
+- **Plugins**: Each panel now lives under `plugins/<name>/` with a `frontend/` module (the UI) and an optional `backend/` package (FastAPI routes). A JSON config (`panels.json`) selects which plugin goes into each slot.
 - **Data flow**: The dashboard polls `/api/status` and `/api/history` for summary and time-series data, while some plugins own additional endpoints (e.g., `/api/earth/loop`).
 
 ---
@@ -37,25 +37,31 @@ backend/app
 ├── models.py                # Pydantic models (see Data Models)
 ├── services/                # Data fabrication, Earth loop fetcher, status assembly
 ├── storage.py               # SQLite history writer/reader
-└── plugins/
-    ├── __init__.py          # Exports load_plugins + config
-    ├── loader.py            # Reads panels.json, imports plugin backends
-    ├── earth/               # Earth-specific backend routes
-    ├── sun/                 # (currently empty stub – frontend only)
-    └── maunakea/            # (currently empty stub – frontend only)
+plugins/
+├── sun/
+│   ├── backend/             # Register hook (currently empty)
+│   └── frontend/            # Carousel + metrics
+├── maunakea/
+│   ├── backend/             # Register hook (currently empty)
+│   └── frontend/            # Summit imagery + environmental data
+├── observing/
+│   └── frontend/            # Tonight's observing index
+├── now/
+│   └── frontend/            # Nowcast + alerts
+└── earth/
+    ├── backend/             # Earth loop API routes
+    └── frontend/            # GOES-18 loop intro animation + single-frame updates
 
 frontend/
 ├── index.html               # Static dashboard shell
-├── app.js                   # Main controller: loads plugins, polls APIs, drives non-plugin panels
-└── plugins/
-    ├── sun/                 # Carousel + metrics + nerd table
-    ├── maunakea/            # Summit imagery + environmental data
-    └── earth/               # GOES-18 loop intro animation + single-frame updates
+└── app.js                   # Main controller: loads plugins, polls APIs, drives non-plugin panels
 ```
 
-- **Panel Manager** (`frontend/app.js`): Fetches `/api/panels`, dynamically imports `frontend/plugins/<name>/index.js`, and mounts each plugin into its assigned slot. It also relays "nerd mode" toggles to plugins.
-- **Backend plugin loader** (`backend/app/plugins/loader.py`): Reads `panels.json`, imports each `backend/app/plugins/<name>` package, and calls `register(app)` so plugins can add routes or background tasks.
-- **Static serving**: FastAPI mounts the `frontend/` directory so the dashboard can be visited at `http://127.0.0.1:8000/`, avoiding `file://` CORS problems.
+- **Panel Manager** (`frontend/app.js`): Fetches `/api/panels`, dynamically imports `/plugins/<name>/frontend/index.js`, and mounts each plugin into its assigned slot.
+- **Backend plugin loader** (`backend/app/plugins/loader.py`): Reads `panels.json`, imports each `plugins/<name>/backend` package, and calls `register(app)` so plugins can add routes or background tasks.
+- **Static serving**: FastAPI mounts the `frontend/` directory so the dashboard can be visited at `http://127.0.0.1:8000/`, avoiding `file://` CORS problems. It also serves plugin assets under `/plugins/<name>/frontend/...`.
+
+Each plugin can include a `config.json` in its root directory with plugin-specific settings (endpoints, image catalogs, refresh intervals). Backend services load these values via `load_plugin_config("<name>")`, allowing plugins to own their configuration without touching `.env`.
 
 ---
 
@@ -99,22 +105,22 @@ Each plugin exports a default factory returning an object that can implement:
 
 ```ts
 interface PanelPlugin {
-  init({ container, slotId, host }): Promise<void>;
+  init({ container, slotId, host, config }): Promise<void>;
   start?(): void;
   stop?(): void;
   destroy?(): void;
-  setNerdMode?(enabled: boolean): void;
 }
 ```
 
 - `container`: DOM node where the plugin renders its UI.
-- `host`: exposes helpers: `apiBase()`, `fetchJson(path)`, `getNerdMode()`.
+- `config`: the parsed contents of `plugins/<name>/config.json` (or `{}`).
+- `host`: exposes helpers: `apiBase()`, `fetchJson(path)`, `getConfig()`.
 - Plugins are responsible for their own timers, fetches, and caches (e.g., Sun plugin caches `/api/status` for 60s, Earth plugin manages GOES images).
 
 ### Backend contract
 
 - Optional. If a plugin needs bespoke endpoints, create a package in `backend/app/plugins/<name>` exposing `register(app)`—add FastAPI routers, scheduled jobs, etc.
-- Shared endpoints (`/api/status`, `/api/history`) live in `backend/app/api/routes.py` and can be reused by plugins that only need existing data (e.g., Sun/Maunakea).
+- Shared endpoints (`/api/status`, `/api/history`) live in `backend/app/api/routes.py` and can be reused by plugins that only need existing data (e.g., Sun/Maunakea). Plugin configs are exposed via `/api/plugins/<name>/config`.
 
 ---
 

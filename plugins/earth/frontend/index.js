@@ -1,3 +1,9 @@
+const DEFAULT_CONFIG = {
+  refreshIntervalMs: 600_000,
+  introStatus: "Playing last 50 frames once…",
+  liveStatus: "Showing latest GeoColor frame (updates every 10 minutes).",
+};
+
 const template = `
   <h2><span class="tag space">EARTH</span> Earth – GOES-18 GeoColor</h2>
   <div class="source" title="GOES-18 GeoColor loop (50 frames).">
@@ -24,10 +30,16 @@ class EarthPanelPlugin {
     this.earthLoopPlayed = false;
     this.animTimer = null;
     this.refreshTimer = null;
+    this.config = { ...DEFAULT_CONFIG };
   }
 
-  async init({ container }) {
+  async init({ container, config }) {
     this.container = container;
+    this.config = {
+      refreshIntervalMs: config?.refresh_interval_ms ?? DEFAULT_CONFIG.refreshIntervalMs,
+      introStatus: config?.intro_status ?? DEFAULT_CONFIG.introStatus,
+      liveStatus: config?.live_status ?? DEFAULT_CONFIG.liveStatus,
+    };
     container.innerHTML = template;
     this.dom = {
       image: container.querySelector("[data-role='earth-image']"),
@@ -38,7 +50,7 @@ class EarthPanelPlugin {
 
   start() {
     this.loadFrames();
-    this.refreshTimer = setInterval(() => this.loadFrames(), 600_000);
+    this.refreshTimer = setInterval(() => this.loadFrames(), this.config.refreshIntervalMs);
   }
 
   stop() {
@@ -63,11 +75,11 @@ class EarthPanelPlugin {
         this.earthFrames = data;
         if (this.earthLoopPlayed) {
           this.earthIndex = this.earthFrames.length - 1;
-          this.dom.status.textContent = "Showing latest GeoColor frame (updates every 10 minutes).";
+          this.dom.status.textContent = this.config.liveStatus;
           this.updateFrame();
         } else {
           this.earthIndex = 0;
-          this.dom.status.textContent = "Playing last 50 frames once…";
+          this.dom.status.textContent = this.config.introStatus;
           this.updateFrame();
           this.startIntroLoop();
         }
@@ -108,7 +120,7 @@ class EarthPanelPlugin {
     }
     if (this.earthLoopPlayed || this.earthFrames.length <= 1) {
       this.earthLoopPlayed = true;
-      this.dom.status.textContent = "Showing latest GeoColor frame (updates every 10 minutes).";
+      this.dom.status.textContent = this.config.liveStatus;
       return;
     }
     let framesRemaining = this.earthFrames.length - 1;
@@ -122,7 +134,7 @@ class EarthPanelPlugin {
         this.earthLoopPlayed = true;
         this.earthIndex = this.earthFrames.length - 1;
         this.updateFrame();
-        this.dom.status.textContent = "Showing latest GeoColor frame (updates every 10 minutes).";
+        this.dom.status.textContent = this.config.liveStatus;
       }
     }, 500);
   }

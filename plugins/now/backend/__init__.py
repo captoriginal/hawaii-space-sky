@@ -1,4 +1,4 @@
-def register(app):
+def register(app, helpers=None):
     """
     Now/alerts panel consumes the shared /api/status payload so it does not
     currently expose plugin-specific backend routes. The register hook is kept

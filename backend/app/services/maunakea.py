@@ -8,6 +8,7 @@ import httpx
 from ..config import Settings
 from ..models import MaunakeaConditions
 from .fetchers import _get_with_retry
+from ..plugins import load_plugin_config
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +127,10 @@ async def fetch_maunakea_conditions(settings: Settings) -> MaunakeaConditions:
     updated_ref = sky_ts or temp_ts or datetime.utcnow().replace(tzinfo=timezone.utc)
     updated_at = updated_ref.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
+    mk_config = load_plugin_config("maunakea")
+    skycam_url = mk_config.get("skycam_url", settings.MAUNAKEA_SKYCAM_URL)
     return MaunakeaConditions(
-        sky_image_url=settings.MAUNAKEA_SKYCAM_URL,
+        sky_image_url=skycam_url,
         cloud_fraction=cloud_fraction,
         seeing_arcsec=seeing,
         transparency_mag=transparency,

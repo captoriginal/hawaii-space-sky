@@ -1,0 +1,29 @@
+{
+  "xray_flux_url": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
+  "solar_image_url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg",
+  "image_catalog": [
+    { "label": "AIA 0193", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg" },
+    { "label": "AIA 0171", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0171.jpg" },
+    { "label": "AIA 0304", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0304.jpg" },
+    { "label": "AIA 0211", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0211.jpg" },
+    { "label": "AIA 0131", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0131.jpg" },
+    { "label": "AIA 0335", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0335.jpg" },
+    { "label": "AIA 0094", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0094.jpg" },
+    { "label": "AIA 1600", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_1600.jpg" },
+    { "label": "AIA 1700", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_1700.jpg" },
+    { "label": "AIA 211/193/171", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_211193171.jpg" }
+  ],
+  "carousel_base_url": "https://services.swpc.noaa.gov/images/animations/suvi/primary/",
+  "carousel_images": [
+    { "id": "aia-094", "path": "094/latest.png", "label": "AIA 094" },
+    { "id": "aia-0131", "path": "131/latest.png", "label": "AIA 0131" },
+    { "id": "aia-0171", "path": "171/latest.png", "label": "AIA 0171" },
+    { "id": "aia-0195", "path": "195/latest.png", "label": "AIA 0195" },
+    { "id": "aia-0284", "path": "284/latest.png", "label": "AIA 0284" },
+    { "id": "aia-0304", "path": "304/latest.png", "label": "AIA 0304" }
+  ],
+  "status_ttl_ms": 60000,
+  "status_refresh_ms": 90000,
+  "carousel_interval_ms": 15000,
+  "image_refresh_ms": 60000
+}

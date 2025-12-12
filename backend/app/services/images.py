@@ -7,6 +7,7 @@ import httpx
 from PIL import Image, ImageEnhance
 
 from ..config import Settings
+from ..plugins import load_plugin_config
 from ..models import SolarImage
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,8 @@ async def fetch_latest_solar_image(settings: Settings) -> Optional[SolarImage]:
     """
     Download the latest solar image to static storage and return metadata.
     """
-    url = settings.SOLAR_IMAGE_URL
+    sun_config = load_plugin_config("sun")
+    url = sun_config.get("solar_image_url", settings.SOLAR_IMAGE_URL)
     if not url:
         return None
 

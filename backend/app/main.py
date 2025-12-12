@@ -28,6 +28,10 @@ static_dir = Path(__file__).resolve().parent / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+plugins_dir = Path(__file__).resolve().parents[2] / "plugins"
+if plugins_dir.exists():
+    app.mount("/plugins", StaticFiles(directory=plugins_dir), name="plugin-assets")
+
 
 async def background_refresh():
     settings = get_settings()

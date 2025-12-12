@@ -1,4 +1,4 @@
-def register(app):
+def register(app, helpers=None):
     """
     Observing panel uses shared /api/status data only, so no backend routes are
     required right now. The stub keeps the plugin loader happy and provides a

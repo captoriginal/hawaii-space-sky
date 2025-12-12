@@ -8,20 +8,28 @@ import httpx
 from fastapi import HTTPException
 
 from ..config import get_settings
+from ..plugins import load_plugin_config
 from ..models import EarthFrame
 
 logger = logging.getLogger(__name__)
 
 EARTH_CACHE: List[EarthFrame] = []
 EARTH_CACHE_TS: float = 0.0
-EARTH_CACHE_TTL = 600  # 10 minutes
+EARTH_CONFIG = load_plugin_config("earth")
+EARTH_CACHE_TTL = EARTH_CONFIG.get("cache_ttl_seconds", 600)
 
-FILENAME_RE = re.compile(r"(\d{4})(\d{3})(\d{2})(\d{2})_GOES18-ABI-FD-GEOCOLOR-1808x1808\.jpg")
-BASE_URL = "https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/"
+LISTING_PATTERN = EARTH_CONFIG.get(
+    "filename_regex", r"(\d{4})(\d{3})(\d{2})(\d{2})_GOES18-ABI-FD-GEOCOLOR-1808x1808\.jpg"
+)
+LISTING_RE = re.compile(LISTING_PATTERN)
+BASE_URL = EARTH_CONFIG.get(
+    "loop_base_url", "https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/"
+)
+TIMESTAMP_RE = re.compile(r"(\d{4})(\d{3})(\d{2})(\d{2})")
 
 
 def _parse_timestamp_from_filename(name: str) -> Optional[str]:
-    m = FILENAME_RE.search(name)
+    m = TIMESTAMP_RE.search(name)
     if not m:
         return None
     year, jjj, hh, mm = m.groups()
@@ -44,9 +52,7 @@ async def fetch_earth_frames() -> List[EarthFrame]:
             logger.warning("Earth loop fetch failed: %s", exc)
             raise
 
-    filenames = FILENAME_RE.findall(resp.text)
-    # resp.text includes matches; extract unique filenames using regex finditer
-    matches = re.findall(r"(\d{4}\d{3}\d{2}\d{2}_GOES18-ABI-FD-GEOCOLOR-1808x1808\.jpg)", resp.text)
+    matches = [match.group(0) for match in LISTING_RE.finditer(resp.text)]
     unique = list(dict.fromkeys(matches))
     if not unique:
         raise HTTPException(status_code=503, detail="No earth frames found")

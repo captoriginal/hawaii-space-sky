@@ -1,14 +1,18 @@
-const SUN_IMAGES_BASE = "https://services.swpc.noaa.gov/images/animations/suvi/primary/";
-const SUN_IMAGE_LIST = [
-  { id: "aia-094", path: "094/latest.png", label: "AIA 094" },
-  { id: "aia-0131", path: "131/latest.png", label: "AIA 0131" },
-  { id: "aia-0171", path: "171/latest.png", label: "AIA 0171" },   
-  { id: "aia-0195", path: "195/latest.png", label: "AIA 0195" },
-  { id: "aia-0284", path: "284/latest.png", label: "AIA 0284" },
-  { id: "aia-0304", path: "304/latest.png", label: "AIA 0304" },
-];
-
-const STATUS_TTL = 60_000;
+const DEFAULT_CONFIG = {
+  carouselBaseUrl: "https://services.swpc.noaa.gov/images/animations/suvi/primary/",
+  carouselImages: [
+    { id: "aia-094", path: "094/latest.png", label: "AIA 094" },
+    { id: "aia-0131", path: "131/latest.png", label: "AIA 0131" },
+    { id: "aia-0171", path: "171/latest.png", label: "AIA 0171" },
+    { id: "aia-0195", path: "195/latest.png", label: "AIA 0195" },
+    { id: "aia-0284", path: "284/latest.png", label: "AIA 0284" },
+    { id: "aia-0304", path: "304/latest.png", label: "AIA 0304" }
+  ],
+  statusTtlMs: 60_000,
+  statusRefreshMs: 90_000,
+  carouselIntervalMs: 15_000,
+  imageRefreshMs: 60_000
+};
 
 const template = `
   <h2><span class="tag sun">SUN</span> The Sun</h2>
@@ -32,14 +36,6 @@ const template = `
       <span class="value" data-role="activity-level">—</span>
     </div>
   </div>
-  <div class="nerd-section" data-role="nerd">
-    <table>
-      <thead>
-        <tr><th>Timestamp</th><th>Short</th><th>Long</th></tr>
-      </thead>
-      <tbody data-role="sun-table-body"></tbody>
-    </table>
-  </div>
   <div class="unavailable" data-role="sun-unavailable" style="display:none;">Sun data unavailable</div>
 `;
 
@@ -58,12 +54,22 @@ class SunPanelPlugin {
     this.statusTimer = null;
     this.statusCache = null;
     this.statusCacheTs = 0;
-    this.nerdMode = host?.getNerdMode?.() ?? false;
     this.imageLoadedOnce = false;
+    this.config = { ...DEFAULT_CONFIG };
   }
 
-  async init({ container }) {
+  async init({ container, config }) {
     this.container = container;
+    this.config = {
+      carouselBaseUrl: config?.carousel_base_url || DEFAULT_CONFIG.carouselBaseUrl,
+      carouselImages: Array.isArray(config?.carousel_images) && config.carousel_images.length
+        ? config.carousel_images
+        : DEFAULT_CONFIG.carouselImages,
+      statusTtlMs: config?.status_ttl_ms ?? DEFAULT_CONFIG.statusTtlMs,
+      statusRefreshMs: config?.status_refresh_ms ?? DEFAULT_CONFIG.statusRefreshMs,
+      carouselIntervalMs: config?.carousel_interval_ms ?? DEFAULT_CONFIG.carouselIntervalMs,
+      imageRefreshMs: config?.image_refresh_ms ?? DEFAULT_CONFIG.imageRefreshMs
+    };
     container.innerHTML = template;
     this.dom = {
       source: container.querySelector("[data-role='source']"),
@@ -74,19 +80,16 @@ class SunPanelPlugin {
       metrics: container.querySelector("[data-role='sun-metrics']"),
       xrayClass: container.querySelector("[data-role='xray-class']"),
       activity: container.querySelector("[data-role='activity-level']"),
-      nerd: container.querySelector("[data-role='nerd']"),
-      nerdBody: container.querySelector("[data-role='sun-table-body']"),
       unavailable: container.querySelector("[data-role='sun-unavailable']"),
     };
-    this.dom.nerd.style.display = this.nerdMode ? "block" : "none";
     this.showCurrentImage();
-    this.autoplayTimer = setInterval(() => this.nextImage(), 15_000);
-    this.refreshTimer = setInterval(() => this.showCurrentImage(), 60_000);
+    this.autoplayTimer = setInterval(() => this.nextImage(), this.config.carouselIntervalMs);
+    this.refreshTimer = setInterval(() => this.showCurrentImage(), this.config.imageRefreshMs);
   }
 
   start() {
     this.refreshStatus(true);
-    this.statusTimer = setInterval(() => this.refreshStatus(false), 90_000);
+    this.statusTimer = setInterval(() => this.refreshStatus(false), this.config.statusRefreshMs);
   }
 
   stop() {
@@ -102,13 +105,6 @@ class SunPanelPlugin {
     this.container = null;
   }
 
-  setNerdMode(enabled) {
-    this.nerdMode = enabled;
-    if (this.dom.nerd) {
-      this.dom.nerd.style.display = enabled ? "block" : "none";
-    }
-  }
-
   nextImage() {
     this.carouselIndex = (this.carouselIndex + 1) % SUN_IMAGE_LIST.length;
     this.showCurrentImage();
@@ -116,8 +112,13 @@ class SunPanelPlugin {
 
   showCurrentImage() {
     if (!this.dom.imageStack) return;
-    const item = SUN_IMAGE_LIST[this.carouselIndex % SUN_IMAGE_LIST.length];
-    const url = `${SUN_IMAGES_BASE}${item.path}?t=${Date.now()}`;
+    const images = this.config.carouselImages;
+    if (!images.length) return;
+    const item = images[this.carouselIndex % images.length];
+    const base = this.config.carouselBaseUrl.endsWith("/")
+      ? this.config.carouselBaseUrl
+      : `${this.config.carouselBaseUrl}/`;
+    const url = `${base}${item.path}?t=${Date.now()}`;
     const wrapper = this.dom.imageStack;
     const current = this.dom.image;
     const nextImg = document.createElement("img");
@@ -165,7 +166,6 @@ class SunPanelPlugin {
       this.dom.metrics.style.display = "";
       this.dom.xrayClass.textContent = sun.current_class;
       this.dom.activity.textContent = sun.activity_level;
-      this.renderNerdTable(sun);
       this.updateSource(status);
     } catch (err) {
       console.error("Sun plugin status error", err);
@@ -175,7 +175,7 @@ class SunPanelPlugin {
 
   async fetchStatus(force = false) {
     const now = Date.now();
-    if (!force && this.statusCache && now - this.statusCacheTs < STATUS_TTL) {
+    if (!force && this.statusCache && now - this.statusCacheTs < this.config.statusTtlMs) {
       return this.statusCache;
     }
     const resp = await fetch(`${this.host.apiBase()}/api/status`);
@@ -189,19 +189,6 @@ class SunPanelPlugin {
   showUnavailable() {
     if (this.dom.metrics) this.dom.metrics.style.display = "none";
     if (this.dom.unavailable) this.dom.unavailable.style.display = "block";
-  }
-
-  renderNerdTable(sun) {
-    if (!this.dom.nerdBody) return;
-    this.dom.nerdBody.innerHTML = "";
-    const shorts = (sun.xray_flux_short || []).slice(-5);
-    const longs = (sun.xray_flux_long || []).slice(-5);
-    shorts.forEach((point, idx) => {
-      const longVal = longs[idx] || longs[longs.length - 1];
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${point.timestamp}</td><td>${point.value_wm2.toExponential(2)}</td><td>${longVal.value_wm2.toExponential(2)}</td>`;
-      this.dom.nerdBody.appendChild(tr);
-    });
   }
 
   updateSource(status) {

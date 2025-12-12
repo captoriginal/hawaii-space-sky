@@ -1,4 +1,4 @@
-def register(app):
+def register(app, helpers=None):
     """
     Sun panel currently consumes shared /api/status data, so no backend routes
     are required. The register hook exists to satisfy the plugin loader and to
