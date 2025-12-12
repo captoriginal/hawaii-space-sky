@@ -32,15 +32,6 @@ async def fetch_latest_solar_image(settings: Settings) -> Optional[SolarImage]:
     Download the latest solar image to static storage and return metadata.
     """
     url = settings.SOLAR_IMAGE_URL
-    if settings.DATA_MODE == "demo" or not settings.USE_REAL_SOLAR_IMAGES:
-        ts = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-        return SolarImage(
-            url="/static/solar/placeholder.svg",
-            source_name="Demo solar placeholder",
-            wavelength=None,
-            captured_at=ts,
-        )
-
     if not url:
         return None
 

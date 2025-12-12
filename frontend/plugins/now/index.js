@@ -78,6 +78,7 @@ class NowPanelPlugin {
     const space = status.space_weather;
     const observing = status.observing_index;
     const parts = [];
+    const missing = [];
     if (sun) {
       const level = sun.activity_level;
       let phrasing = "solar activity";
@@ -86,6 +87,8 @@ class NowPanelPlugin {
       else if (level === "stormy") phrasing += " high (M/X-class flares)";
       else phrasing += ` ${level}`;
       parts.push(phrasing);
+    } else {
+      missing.push("Sun data unavailable");
     }
     if (space && space.kp != null) {
       let geo = "";
@@ -94,11 +97,19 @@ class NowPanelPlugin {
       else geo = "geomagnetic storm conditions";
       geo += ` (Kp ${space.kp})`;
       parts.push(geo);
+    } else {
+      missing.push("Space weather unavailable");
     }
     if (observing) {
       parts.push(`Maunakea observing ${observing.rating} (Index ${observing.score}/10)`);
+    } else {
+      missing.push("Observing index unavailable");
     }
-    this.dom.nowcast.textContent = parts.length ? `Now · ${parts.join(". ")}.` : "Now · status unavailable";
+    const sentences = [...parts];
+    if (missing.length) sentences.push(missing.join(". "));
+    this.dom.nowcast.textContent = sentences.length
+      ? `Now · ${sentences.join(". ")}.`
+      : "Now · status unavailable";
   }
 
   renderAlerts(alerts) {

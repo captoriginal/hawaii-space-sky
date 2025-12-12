@@ -1,13 +1,11 @@
 import logging
 import asyncio
-import time
 from typing import Optional
 from datetime import datetime
 
 import httpx
 
 from ..config import Settings
-from ..data import get_demo_space_weather_data, get_demo_sun_data
 from ..models import SpaceWeatherData, SunData, XrayFluxPoint, BzPoint, SpeedPoint
 
 logger = logging.getLogger(__name__)
@@ -49,20 +47,13 @@ async def _get_with_retry(client: httpx.AsyncClient, url: str, settings: Setting
 
 async def fetch_xray_flux(settings: Settings) -> SunData:
     """
-    Fetch GOES X-ray flux. Falls back to demo on error.
+    Fetch GOES X-ray flux; raise on failure so callers can handle gracefully.
     """
-    if settings.DATA_MODE == "demo" or not settings.USE_REAL_SUN:
-        return get_demo_sun_data()
-
     async with httpx.AsyncClient(
         timeout=settings.HTTP_TIMEOUT_SECONDS, follow_redirects=True
     ) as client:
-        try:
-            resp = await _get_with_retry(client, settings.XRAY_FLUX_URL, settings)
-            payload = resp.json()
-        except Exception as exc:
-            logger.warning("xray fetch failed (%s); falling back to demo", exc)
-            return get_demo_sun_data()
+        resp = await _get_with_retry(client, settings.XRAY_FLUX_URL, settings)
+        payload = resp.json()
 
     # payload is list of dicts with time_tag, flux, energy
     short_points = []
@@ -88,9 +79,12 @@ async def fetch_xray_flux(settings: Settings) -> SunData:
     activity_level = _flux_to_activity(latest_flux)
     updated_at = short_points[-1].timestamp if short_points else datetime.utcnow().isoformat() + "Z"
 
+    if not short_points or not long_points:
+        raise ValueError("X-ray flux payload missing points")
+
     return SunData(
-        xray_flux_short=short_points or get_demo_sun_data().xray_flux_short,
-        xray_flux_long=long_points or get_demo_sun_data().xray_flux_long,
+        xray_flux_short=short_points,
+        xray_flux_long=long_points,
         current_class=current_class,
         activity_level=activity_level,
         updated_at=updated_at,
@@ -100,24 +94,17 @@ async def fetch_xray_flux(settings: Settings) -> SunData:
 
 async def fetch_space_weather(settings: Settings) -> SpaceWeatherData:
     """
-    Fetch solar wind/IMF and Kp. Falls back to demo on error.
+    Fetch solar wind/IMF and Kp; raise on failure so callers can surface the issue.
     """
-    if settings.DATA_MODE == "demo" or not settings.USE_REAL_SPACE_WEATHER:
-        return get_demo_space_weather_data()
-
     async with httpx.AsyncClient(
         timeout=settings.HTTP_TIMEOUT_SECONDS, follow_redirects=True
     ) as client:
-        try:
-            plasma_resp = await _get_with_retry(client, settings.SOLAR_WIND_URL, settings)
-            plasma = plasma_resp.json()
-            mag_resp = await _get_with_retry(client, settings.IMF_URL, settings)
-            mag = mag_resp.json()
-            kp_resp = await _get_with_retry(client, settings.KP_URL, settings)
-            kp_payload = kp_resp.json()
-        except Exception as exc:
-            logger.warning("space weather fetch failed (%s); falling back to demo", exc)
-            return get_demo_space_weather_data()
+        plasma_resp = await _get_with_retry(client, settings.SOLAR_WIND_URL, settings)
+        plasma = plasma_resp.json()
+        mag_resp = await _get_with_retry(client, settings.IMF_URL, settings)
+        mag = mag_resp.json()
+        kp_resp = await _get_with_retry(client, settings.KP_URL, settings)
+        kp_payload = kp_resp.json()
 
     def parse_table(tbl, value_index, ts_index=0, limit=24):
         if not isinstance(tbl, list) or len(tbl) <= 1:
@@ -146,13 +133,16 @@ async def fetch_space_weather(settings: Settings) -> SpaceWeatherData:
         except Exception:
             kp_val = None
     if kp_val is None:
-        kp_val = 2.0
+        raise ValueError("Kp payload missing latest value")
 
     updated_at = bz_series[-1].timestamp if bz_series else datetime.utcnow().isoformat() + "Z"
 
+    if not bz_series or not speed_series:
+        raise ValueError("Space weather payload missing series data")
+
     return SpaceWeatherData(
-        bz_series=bz_series or get_demo_space_weather_data().bz_series,
-        speed_series=speed_series or get_demo_space_weather_data().speed_series,
+        bz_series=bz_series,
+        speed_series=speed_series,
         kp=kp_val,
         updated_at=updated_at,
     )
@@ -173,8 +163,6 @@ async def update_real_status(settings: Settings) -> tuple[SunData, SpaceWeatherD
     else:
         space = results[1]
 
-    if sun is None:
-        sun = get_demo_sun_data()
-    if space is None:
-        space = get_demo_space_weather_data()
+    if sun is None or space is None:
+        raise RuntimeError("update_real_status requires both sun and space data")
     return sun, space

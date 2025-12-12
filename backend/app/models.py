@@ -36,7 +36,7 @@ class SpeedPoint(BaseModel):
 class SpaceWeatherData(BaseModel):
     bz_series: List[BzPoint]
     speed_series: List[SpeedPoint]
-    kp: float
+    kp: Optional[float]
     updated_at: str
 
 
@@ -104,10 +104,10 @@ class EarthFrame(BaseModel):
 
 
 class DashboardStatus(BaseModel):
-    sun: SunData
-    space_weather: SpaceWeatherData
-    maunakea: MaunakeaConditions
-    observing_index: ObservingIndex
+    sun: Optional[SunData] = None
+    space_weather: Optional[SpaceWeatherData] = None
+    maunakea: Optional[MaunakeaConditions] = None
+    observing_index: Optional[ObservingIndex] = None
     alerts: List[Alert] = Field(default_factory=list)
     data_sources: dict = Field(default_factory=dict)
     timestamp: str

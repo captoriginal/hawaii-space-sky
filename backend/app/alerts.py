@@ -10,20 +10,21 @@ def get_current_alerts(status: DashboardStatus) -> List[Alert]:
     sun = status.sun
 
     # Solar flare alert (M-class or higher)
-    try:
-        if sun.current_class.upper().startswith(("M", "X")):
-            alerts.append(
-                Alert(
-                    id="solar_flare",
-                    severity="warning",
-                    title="Elevated solar flares",
-                    description=f"Latest X-ray classification {sun.current_class}.",
+    if sun:
+        try:
+            if sun.current_class.upper().startswith(("M", "X")):
+                alerts.append(
+                    Alert(
+                        id="solar_flare",
+                        severity="warning",
+                        title="Elevated solar flares",
+                        description=f"Latest X-ray classification {sun.current_class}.",
+                    )
                 )
-            )
-    except Exception:
-        pass
+        except Exception:
+            pass
 
-    if space.kp >= 5:
+    if space and space.kp is not None and space.kp >= 5:
         severity = "warning" if space.kp < 7 else "alert"
         alerts.append(
             Alert(
@@ -34,9 +35,9 @@ def get_current_alerts(status: DashboardStatus) -> List[Alert]:
             )
         )
 
-    if space.bz_series:
+    if space and space.bz_series:
         recent_bz = [p.value_nT for p in space.bz_series[-3:]]
-        if all(val <= -10 for val in recent_bz):
+        if len(recent_bz) == 3 and all(val <= -10 for val in recent_bz):
             alerts.append(
                 Alert(
                     id="bz_southward",
@@ -46,7 +47,7 @@ def get_current_alerts(status: DashboardStatus) -> List[Alert]:
                 )
             )
 
-    if observing.score >= 8:
+    if observing and observing.score >= 8:
         alerts.append(
             Alert(
                 id="observing_excellent",

@@ -183,7 +183,7 @@ class MaunakeaPanelPlugin {
     const origin = status?.data_sources?.maunakea || "demo";
     if (this.dom.source) {
       this.dom.source.textContent = origin;
-      this.dom.source.classList.remove("real", "cache", "demo");
+      this.dom.source.classList.remove("real", "cache", "demo", "unavailable");
       this.dom.source.classList.add(origin);
     }
     const stale = (status?.alerts || []).some((a) => a.id === "stale_maunakea");

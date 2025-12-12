@@ -26,11 +26,13 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
     mk, mk_origin, mk_stale = await select_maunakea(settings)
     moon, moon_origin, moon_stale = await select_moon(settings)
     solar_image, solar_origin, solar_stale = await select_solar_image(settings)
-    if solar_image:
+    if sun and solar_image:
         sun.images = [solar_image]
 
-    observing_index = compute_observing_index(
-        maunakea=mk, moon_info=moon, space_weather=space
+    observing_index = (
+        compute_observing_index(maunakea=mk, moon_info=moon, space_weather=space)
+        if mk
+        else None
     )
 
     timestamp = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -40,7 +42,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
         "maunakea": mk_origin,
         "moon": moon_origin,
         "solar_image": solar_origin,
-        "observing_index": "computed",
+        "observing_index": "computed" if observing_index else "unavailable",
     }
     status = DashboardStatus(
         sun=sun,
@@ -52,7 +54,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
         timestamp=timestamp,
     )
 
-    if sun_stale:
+    if sun and sun_stale:
         status.alerts.append(
             {
                 "id": "stale_sun_data",
@@ -61,7 +63,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
                 "description": "Using cached Sun data older than freshness window.",
             }
         )
-    if space_stale:
+    if space and space_stale:
         status.alerts.append(
             {
                 "id": "stale_space_data",
@@ -70,7 +72,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
                 "description": "Using cached space weather data older than freshness window.",
             }
         )
-    if solar_stale:
+    if solar_image and solar_stale:
         status.alerts.append(
             {
                 "id": "stale_solar_image",
@@ -79,7 +81,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
                 "description": "Using cached solar image.",
             }
         )
-    if mk_stale:
+    if mk and mk_stale:
         status.alerts.append(
             {
                 "id": "stale_maunakea",
@@ -88,7 +90,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
                 "description": "Using cached Maunakea conditions.",
             }
         )
-    if moon_stale:
+    if moon and moon_stale:
         status.alerts.append(
             {
                 "id": "stale_moon",

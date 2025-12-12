@@ -72,41 +72,44 @@ def record_history(status: DashboardStatus) -> None:
         ts = datetime.utcnow()
     ts_epoch = ts.timestamp()
 
-    sun_short = (
-        status.sun.xray_flux_short[-1].value_wm2 if status.sun.xray_flux_short else None
-    )
-    sun_long = (
-        status.sun.xray_flux_long[-1].value_wm2 if status.sun.xray_flux_long else None
-    )
-    conn.execute(
-        """
-        INSERT OR REPLACE INTO sun_history (timestamp, ts_epoch, xray_flux_short, xray_flux_long)
-        VALUES (?, ?, ?, ?)
-        """,
-        (status.timestamp, ts_epoch, sun_short, sun_long),
-    )
+    if status.sun:
+        sun_short = (
+            status.sun.xray_flux_short[-1].value_wm2 if status.sun.xray_flux_short else None
+        )
+        sun_long = (
+            status.sun.xray_flux_long[-1].value_wm2 if status.sun.xray_flux_long else None
+        )
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO sun_history (timestamp, ts_epoch, xray_flux_short, xray_flux_long)
+            VALUES (?, ?, ?, ?)
+            """,
+            (status.timestamp, ts_epoch, sun_short, sun_long),
+        )
 
-    bz = status.space_weather.bz_series[-1].value_nT if status.space_weather.bz_series else None
-    speed = (
-        status.space_weather.speed_series[-1].value_km_s
-        if status.space_weather.speed_series
-        else None
-    )
-    conn.execute(
-        """
-        INSERT OR REPLACE INTO space_weather_history (timestamp, ts_epoch, bz, speed_km_s, kp)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (status.timestamp, ts_epoch, bz, speed, status.space_weather.kp),
-    )
+    if status.space_weather:
+        bz = status.space_weather.bz_series[-1].value_nT if status.space_weather.bz_series else None
+        speed = (
+            status.space_weather.speed_series[-1].value_km_s
+            if status.space_weather.speed_series
+            else None
+        )
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO space_weather_history (timestamp, ts_epoch, bz, speed_km_s, kp)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (status.timestamp, ts_epoch, bz, speed, status.space_weather.kp),
+        )
 
-    conn.execute(
-        """
-        INSERT OR REPLACE INTO observing_history (timestamp, ts_epoch, index_score)
-        VALUES (?, ?, ?)
-        """,
-        (status.timestamp, ts_epoch, status.observing_index.score),
-    )
+    if status.observing_index:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO observing_history (timestamp, ts_epoch, index_score)
+            VALUES (?, ?, ?)
+            """,
+            (status.timestamp, ts_epoch, status.observing_index.score),
+        )
     conn.commit()
 
 
