@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urljoin
 
 import httpx
 from PIL import Image, ImageEnhance
@@ -14,6 +15,16 @@ logger = logging.getLogger(__name__)
 
 STATIC_SOLAR_DIR = Path(__file__).resolve().parent.parent / "static" / "solar"
 STATIC_SOLAR_DIR.mkdir(parents=True, exist_ok=True)
+
+DEFAULT_CAROUSEL_IMAGES = [
+    {"label": "AIA 0193", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg"},
+    {"label": "AIA 0171", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0171.jpg"},
+    {"label": "AIA 0304", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0304.jpg"},
+    {"label": "AIA 0211", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0211.jpg"},
+    {"label": "AIA 0131", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0131.jpg"},
+    {"label": "AIA 0335", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0335.jpg"},
+    {"label": "AIA 0094", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0094.jpg"},
+]
 
 
 def _enhance_image(path: Path) -> None:
@@ -33,7 +44,30 @@ async def fetch_latest_solar_image(settings: Settings) -> Optional[SolarImage]:
     Download the latest solar image to static storage and return metadata.
     """
     sun_config = load_plugin_config("sun")
-    url = sun_config.get("solar_image_url", settings.SOLAR_IMAGE_URL)
+    base_url = (
+        sun_config.get("carousel_base_url")
+        or sun_config.get("solar_image_url")
+        or settings.SOLAR_IMAGE_URL
+    )
+    carousel = sun_config.get("carousel_images") or DEFAULT_CAROUSEL_IMAGES
+    if not isinstance(carousel, list):
+        carousel = DEFAULT_CAROUSEL_IMAGES
+
+    # Prefer a fully qualified URL; if the configured value looks like a base path, fall back to
+    # the first carousel entry that can be resolved.
+    url = base_url if base_url and Path(base_url).suffix else None
+    if url is None:
+        for entry in carousel:
+            candidate = entry.get("url")
+            if not candidate:
+                path = entry.get("path")
+                if path and base_url:
+                    base = base_url if base_url.endswith("/") else base_url + "/"
+                    candidate = urljoin(base, path)
+            if candidate:
+                url = candidate
+                break
+
     if not url:
         return None
 

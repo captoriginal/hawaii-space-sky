@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from urllib.parse import urljoin
 
 from ..alerts import get_current_alerts
 from ..config import Settings, get_settings
@@ -18,7 +19,7 @@ from ..storage import record_history
 logger = logging.getLogger(__name__)
 
 SUN_CONFIG = load_plugin_config("sun")
-DEFAULT_IMAGE_CATALOG = [
+DEFAULT_CAROUSEL_IMAGES = [
     {"label": "AIA 0193", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg"},
     {"label": "AIA 0171", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0171.jpg"},
     {"label": "AIA 0304", "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0304.jpg"},
@@ -29,16 +30,40 @@ DEFAULT_IMAGE_CATALOG = [
 ]
 
 
-def _augment_sun_images(sun: SunData | None, primary: SolarImage | None) -> None:
+def _resolve_catalog_url(entry: dict, base_url: str | None) -> str | None:
+    """
+    Build an absolute image URL from a catalog entry that may contain either a direct URL or
+    a relative path meant to be joined with the configured solar image base URL.
+    """
+    if not entry:
+        return None
+    url = entry.get("url")
+    if url:
+        return url
+    path = entry.get("path")
+    if not path or not base_url:
+        return None
+    base = base_url if base_url.endswith("/") else base_url + "/"
+    return urljoin(base, path)
+
+
+def _augment_sun_images(sun: SunData | None, primary: SolarImage | None, settings: Settings) -> None:
     if not sun:
         return
     existing_urls = {img.url for img in sun.images}
     if primary and primary.url not in existing_urls:
         sun.images.append(primary)
         existing_urls.add(primary.url)
-    catalog = SUN_CONFIG.get("image_catalog", DEFAULT_IMAGE_CATALOG)
-    for entry in catalog:
-        url = entry.get("url")
+    base_url = (
+        SUN_CONFIG.get("carousel_base_url")
+        or SUN_CONFIG.get("solar_image_url")
+        or settings.SOLAR_IMAGE_URL
+    )
+    carousel = SUN_CONFIG.get("carousel_images", DEFAULT_CAROUSEL_IMAGES)
+    if not isinstance(carousel, list):
+        carousel = DEFAULT_CAROUSEL_IMAGES
+    for entry in carousel:
+        url = _resolve_catalog_url(entry, base_url)
         label = entry.get("label", "Solar")
         if not url:
             continue
@@ -62,7 +87,7 @@ async def build_status_payload(settings: Settings | None = None) -> DashboardSta
     mk, mk_origin, mk_stale = await select_maunakea(settings)
     moon, moon_origin, moon_stale = await select_moon(settings)
     solar_image, solar_origin, solar_stale = await select_solar_image(settings)
-    _augment_sun_images(sun, solar_image)
+    _augment_sun_images(sun, solar_image, settings)
 
     observing_index = (
         compute_observing_index(maunakea=mk, moon_info=moon, space_weather=space)

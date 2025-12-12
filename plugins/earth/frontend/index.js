@@ -10,7 +10,7 @@ const template = `
     Source: <span class="badge real">NOAA</span>
   </div>
   <div class="carousel">
-    <img data-role="earth-image" alt="Earth GeoColor" style="width:100%;height:100%;object-fit:contain;border-radius: 10px; background:#0f1b35;" />
+    <img data-role="earth-image" class="earth-image" alt="Earth GeoColor" style="width:100%;height:100%;object-fit:contain;background:#0f1b35;" />
     <div data-role="placeholder" class="placeholder" style="display:none;">No Earth imagery available</div>
   </div>
   <div class="summary" data-role="status">Loading Earth loop…</div>

@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,7 @@ from .models import (
 
 DB_PATH = Path(__file__).resolve().parent / "history.db"
 _conn = None
+logger = logging.getLogger(__name__)
 
 
 def get_conn() -> sqlite3.Connection:
@@ -171,3 +173,23 @@ def fetch_history(hours: int) -> HistoryResponse:
     return HistoryResponse(
         sun=sun_data, space_weather=space_data, observing_index=observing_data
     )
+
+
+def clear_history_db() -> None:
+    """
+    Close any existing connection and remove the history database file so it is
+    recreated on the next use.
+    """
+    global _conn
+    if _conn is not None:
+        try:
+            _conn.close()
+        except Exception as exc:
+            logger.warning("Failed to close history DB before clearing: %s", exc)
+        _conn = None
+    try:
+        DB_PATH.unlink()
+    except FileNotFoundError:
+        return
+    except Exception as exc:
+        logger.warning("Failed to remove history DB %s: %s", DB_PATH, exc)

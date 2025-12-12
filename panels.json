@@ -1,7 +1,7 @@
 {
   "panels": {
-    "panel-1": "sun",
-    "panel-2": "maunakea",
+    "panel-2": "sun",
+    "panel-1": "maunakea",
     "panel-3": "earth",
     "panel-observing": "observing",
     "panel-now": "now"

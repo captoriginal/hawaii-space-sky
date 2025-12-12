@@ -61,7 +61,9 @@ class SunPanelPlugin {
   async init({ container, config }) {
     this.container = container;
     this.config = {
-      carouselBaseUrl: config?.carousel_base_url || DEFAULT_CONFIG.carouselBaseUrl,
+      carouselBaseUrl: config?.carousel_base_url
+        || config?.solar_image_url
+        || DEFAULT_CONFIG.carouselBaseUrl,
       carouselImages: Array.isArray(config?.carousel_images) && config.carousel_images.length
         ? config.carousel_images
         : DEFAULT_CONFIG.carouselImages,
@@ -106,19 +108,38 @@ class SunPanelPlugin {
   }
 
   nextImage() {
-    this.carouselIndex = (this.carouselIndex + 1) % SUN_IMAGE_LIST.length;
+    if (!Array.isArray(this.config.carouselImages) || !this.config.carouselImages.length) return;
+    this.carouselIndex = (this.carouselIndex + 1) % this.config.carouselImages.length;
     this.showCurrentImage();
+  }
+
+  resolveImageUrl(item) {
+    const cacheBust = `t=${Date.now()}`;
+    if (item.url) {
+      const joiner = item.url.includes("?") ? "&" : "?";
+      return `${item.url}${joiner}${cacheBust}`;
+    }
+    if (!item.path) return null;
+    if (!this.config.carouselBaseUrl) return null;
+    const base = this.config.carouselBaseUrl.endsWith("/")
+      ? this.config.carouselBaseUrl
+      : `${this.config.carouselBaseUrl}/`;
+    return `${base}${item.path}?${cacheBust}`;
   }
 
   showCurrentImage() {
     if (!this.dom.imageStack) return;
     const images = this.config.carouselImages;
-    if (!images.length) return;
+    if (!images.length) {
+      if (this.dom.placeholder) this.dom.placeholder.style.display = "grid";
+      return;
+    }
     const item = images[this.carouselIndex % images.length];
-    const base = this.config.carouselBaseUrl.endsWith("/")
-      ? this.config.carouselBaseUrl
-      : `${this.config.carouselBaseUrl}/`;
-    const url = `${base}${item.path}?t=${Date.now()}`;
+    const url = this.resolveImageUrl(item);
+    if (!url) {
+      if (this.dom.placeholder) this.dom.placeholder.style.display = "grid";
+      return;
+    }
     const wrapper = this.dom.imageStack;
     const current = this.dom.image;
     const nextImg = document.createElement("img");
