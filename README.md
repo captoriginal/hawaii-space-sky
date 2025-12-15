@@ -151,3 +151,49 @@ open http://127.0.0.1:8000/
 ```
 
 The first visit seeds `backend/app/history.db`; future samples are appended as `/api/status` is requested.
+
+---
+
+## Testing
+
+The project includes comprehensive unit and integration tests with >90% code coverage.
+
+### Quick Start
+
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests with coverage
+./run_tests.sh
+
+# Run only unit tests
+./run_tests.sh --unit
+
+# Run only integration tests
+./run_tests.sh --integration
+
+# Run tests without coverage report
+pytest
+```
+
+### Test Coverage
+
+- **Unit Tests**: Cache, storage, fetchers, models, plugin loading
+- **Integration Tests**: API endpoints, end-to-end flows
+- **Coverage**: >90% overall, HTML reports in `htmlcov/`
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
+
+### Code Quality
+
+```bash
+# Format code
+black backend/ tests/
+
+# Lint code
+ruff check backend/ tests/
+
+# Type check
+mypy backend/
+```

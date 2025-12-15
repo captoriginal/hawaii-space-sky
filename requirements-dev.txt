@@ -1,0 +1,20 @@
+# Test dependencies
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+httpx==0.25.2  # for testing async http clients
+faker==20.1.0  # for generating test data
+
+# Code quality
+black==23.12.1
+ruff==0.1.9
+mypy==1.7.1
+
+# Already in requirements.txt, but needed for testing
+fastapi
+uvicorn
+pydantic-settings
+python-dotenv
+Pillow
+skyfield

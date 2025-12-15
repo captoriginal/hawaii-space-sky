@@ -11,6 +11,12 @@ __pycache__/
 
 # Tooling artifacts
 .coverage
+htmlcov/
+.ruff_cache/
+
+# Test databases
+*.db-wal
+*.db-shm
 
 # Local environment files
 .env
@@ -22,3 +28,4 @@ __pycache__/
 # Generated imagery (placeholders are SVG, so safe)
 /backend/app/static/*.jpg
 /backend/app/static/solar/*.jpg
+/backend/app/static/solar/*.png
