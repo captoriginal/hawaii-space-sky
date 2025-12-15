@@ -1,3 +1,5 @@
+import { makeImageFullscreenable } from '/fullscreen.js';
+
 const DEFAULT_CONFIG = {
   carouselBaseUrl: "https://services.swpc.noaa.gov/images/animations/suvi/primary/",
   carouselImages: [
@@ -160,6 +162,8 @@ class SunPanelPlugin {
     nextImg.onload = () => {
       this.imageLoadedOnce = true;
       this.dom.placeholder.style.display = "none";
+      // Enable full-screen on click for the new image
+      makeImageFullscreenable(nextImg);
       requestAnimationFrame(() => {
         nextImg.style.opacity = "1";
         if (current) {

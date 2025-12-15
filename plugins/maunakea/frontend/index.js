@@ -1,3 +1,5 @@
+import { makeImageFullscreenable } from '/fullscreen.js';
+
 const template = `
   <h2><span class="tag ground">MK</span> Maunakea Conditions</h2>
   <div class="source" title="Where this Maunakea data came from.">
@@ -70,6 +72,8 @@ class MaunakeaPanelPlugin {
       updated: container.querySelector("[data-role='updated']"),
       unavailable: container.querySelector("[data-role='unavailable']"),
     };
+    // Enable full-screen on click
+    makeImageFullscreenable(this.dom.image);
   }
 
   start() {

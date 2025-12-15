@@ -1,3 +1,5 @@
+import './fullscreen.js';
+
 const state = {
   lastStatus: null,
 };

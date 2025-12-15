@@ -1,3 +1,5 @@
+import { makeImageFullscreenable } from '/fullscreen.js';
+
 const DEFAULT_CONFIG = {
   refreshIntervalMs: 600_000,
   introStatus: "Playing last 50 frames once…",
@@ -46,6 +48,8 @@ class EarthPanelPlugin {
       placeholder: container.querySelector("[data-role='placeholder']"),
       status: container.querySelector("[data-role='status']"),
     };
+    // Enable full-screen on click
+    makeImageFullscreenable(this.dom.image);
   }
 
   start() {

@@ -349,6 +349,56 @@
       color: var(--muted);
       background: rgba(255,255,255,0.02);
     }
+    /* Full-screen image modal */
+    .fullscreen-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      cursor: zoom-out;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .fullscreen-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+    .fullscreen-modal img {
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
+    .fullscreen-modal .close-button {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 1;
+      backdrop-filter: blur(10px);
+      transition: background 0.2s ease;
+    }
+    .fullscreen-modal .close-button:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .sky-image,
+    .solar-image,
+    .earth-image {
+      cursor: zoom-in;
+    }
   </style>
 </head>
 <body>
@@ -373,6 +423,13 @@
     </div>
 
   </div>
+
+  <!-- Full-screen image modal -->
+  <div class="fullscreen-modal" id="fullscreen-modal">
+    <button class="close-button" aria-label="Close fullscreen">&times;</button>
+    <img src="" alt="">
+  </div>
+
   <script type="module" src="./app.js"></script>
 </body>
 </html>
